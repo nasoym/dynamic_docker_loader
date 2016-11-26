@@ -25,18 +25,20 @@ if [[ -n "$CONTENT_LENGTH" ]] && [[ "$CONTENT_LENGTH" -gt "0" ]];then
   read -r -d '' -n "$CONTENT_LENGTH" REQUEST_CONTENT
 fi
 
-pass_on_uri="$( echo "$REQUEST_URI" | sed 's/^\/[^\/]*\/[^\/]*\(\/.*$\)/\1/g' )"
-docker_image="$( echo "$REQUEST_URI" | sed 's/^\/\([^\/]*\/[^\/]*\)\/.*$/\1/g' )"
+pass_on_uri="$( echo "$REQUEST_URI" | sed 's/^\/[^\/]\+\/[^\/]\+\(\/.*$\)/\1/g' )"
+docker_image="$( echo "$REQUEST_URI" | sed 's/^\/\([^\/]\+\/[^\/]\+\)\/.*$/\1/g' )"
 docker_image="$( echo "$docker_image" | sed -e 's/^_\///g' -e 's/\/_$//g')"
-# echo "original:$REQUEST_URI" >&2
-# echo "docker_image:$docker_image" >&2
-# echo "pass_on_uri:$pass_on_uri" >&2
-# echo "whoami:$(whoami)" >&2
+
+echo "method:$REQUEST_METHOD" >&2
+echo "original:$REQUEST_URI" >&2
+echo "docker_image:$docker_image" >&2
+echo "pass_on_uri:$pass_on_uri" >&2
+echo "whoami:$(whoami)" >&2
 
 docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}")"
-if [[ -z "$docker_ports" ]];then
+if [[ -z "$docker_ports" ]] && [[ -n "$docker_image" ]];then
+  echo "docker_image:$docker_image" >&2
   docker run -d -P $docker_image >/dev/null
-  sleep 1
   docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}")"
 fi
 if [[ -n "$docker_ports" ]];then
