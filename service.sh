@@ -1,83 +1,66 @@
-#!/bin/bash
-set -ef -o pipefail
+#!/usr/bin/env bash
+# set -ef -o pipefail
 
-. $(dirname $0)/helper_functions.sh
+# . $(dirname $0)/helper_functions.sh
 
-while getopts "r:d:" OPTIONS; do case $OPTIONS in
-  r) ROUTES_PATH="$OPTARG" ;;
-  d) DEFAULT_ROUTE_HANDLER="$OPTARG" ;;
-esac; done; shift $(( OPTIND - 1 ))
+function upper() { echo "$@" | tr '[:lower:]' '[:upper:]'; }
 
 read -r REQUEST_METHOD REQUEST_URI REQUEST_HTTP_VERSION
-export REQUEST_METHOD 
-export REQUEST_URI 
-export REQUEST_HTTP_VERSION
 
-export REQUEST_HOST="http://${SOCAT_SOCKADDR}:${SOCAT_SOCKPORT}"
-
-. $(dirname $0)/read_headers_to_vars.sh
-
-if [[ -n "$REQUEST_HEADER_CONTENT_LENGTH" ]] && [[ "$REQUEST_HEADER_CONTENT_LENGTH" -gt "0" ]];then
-  read -r -d '' -n "$REQUEST_HEADER_CONTENT_LENGTH" REQUEST_CONTENT
-fi
-export REQUEST_CONTENT
-
-export REQUEST_PATH="${REQUEST_URI/%\?*/}"
-if [[ "${REQUEST_URI}" =~ \? ]]; then
-  export REQUEST_QUERIES="${REQUEST_URI#*\?}"
-  COMMAND_ARGUMENTS=()
-  for I in $(tr '&' '\n' <<<"$REQUEST_QUERIES"); do
-    QUERY_KEY=${I//\=*/}
-    [[ "${I}" =~ = ]] && QUERY_VALUE="$(urldecode ${I//*\=/})"
-    COMMAND_ARGUMENTS+=("--$QUERY_KEY")
-    COMMAND_ARGUMENTS+=("$QUERY_VALUE")
-  done
-fi
-
-REQUEST_PATH_SEGMENT="${REQUEST_PATH}"
-until [[ -z "$REQUEST_PATH_SEGMENT" ]] ; do
-  if [[ -f "${ROUTES_PATH}${REQUEST_PATH_SEGMENT}" ]];then
-    MATCHING_ROUTE_FILE="${ROUTES_PATH}${REQUEST_PATH_SEGMENT}"
-    export REQUEST_SUBPATH="${REQUEST_PATH/#$REQUEST_PATH_SEGMENT/}"
-    break
-  fi
-  if [[ "${REQUEST_PATH_SEGMENT}" =~ /$ ]];then
-    REQUEST_PATH_SEGMENT="${REQUEST_PATH_SEGMENT/%\//}"
-  else
-    REQUEST_PATH_SEGMENT="$(dirname $REQUEST_PATH_SEGMENT)"
+ALL_LINES=""
+while read -r HEADER_LINE; do 
+  HEADER_LINE="$(echo "$HEADER_LINE" | tr -d '\r')"
+  ALL_LINES+="$HEADER_LINE
+"
+  [[ "$HEADER_LINE" =~ ^$ ]] && { break; } 
+  HEADER_KEY="${HEADER_LINE/%: */}"
+  HEADER_KEY="$(upper ${HEADER_KEY//-/_} )"
+  HEADER_VALUE="${HEADER_LINE/#*: /}"
+  if [[ "$HEADER_KEY" = "CONTENT_LENGTH" ]];then
+    CONTENT_LENGTH="$HEADER_VALUE"
   fi
 done
-unset REQUEST_PATH_SEGMENT
 
-if [[ -z "$MATCHING_ROUTE_FILE" ]];then
-    if [[ -f "${DEFAULT_ROUTE_HANDLER}" ]]; then
-      MATCHING_ROUTE_FILE="${DEFAULT_ROUTE_HANDLER}"
-    elif [[ -f "${ROUTES_PATH}/${DEFAULT_ROUTE_HANDLER}" ]]; then
-      MATCHING_ROUTE_FILE="${ROUTES_PATH}/${DEFAULT_ROUTE_HANDLER}"
-    fi
+if [[ -n "$CONTENT_LENGTH" ]] && [[ "$CONTENT_LENGTH" -gt "0" ]];then
+  read -r -d '' -n "$CONTENT_LENGTH" REQUEST_CONTENT
 fi
 
-if [[ -n "$MATCHING_ROUTE_FILE" ]];then
-  RESPONSE_CONTENT="$(echo "$REQUEST_CONTENT" | $MATCHING_ROUTE_FILE "${COMMAND_ARGUMENTS[@]}" $(urldecode ${REQUEST_SUBPATH//\// }))"
-  if [[ $? -eq 1 ]];then
-    echo_response_status_line 500 "Internal Server Error"
-    echo_response_default_headers
-    echo -e "\r"
+pass_on_uri="$( echo "$REQUEST_URI" | sed 's/^\/[^\/]*\/[^\/]*\(\/.*$\)/\1/g' )"
+docker_image="$( echo "$REQUEST_URI" | sed 's/^\/\([^\/]*\/[^\/]*\)\/.*$/\1/g' )"
+docker_image="$( echo "$docker_image" | sed -e 's/^_\///g' -e 's/\/_$//g')"
+# echo "original:$REQUEST_URI" >&2
+# echo "docker_image:$docker_image" >&2
+# echo "pass_on_uri:$pass_on_uri" >&2
+# echo "whoami:$(whoami)" >&2
+
+docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}")"
+if [[ -z "$docker_ports" ]];then
+  docker run -d -P $docker_image >/dev/null
+  sleep 1
+  docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}")"
+fi
+if [[ -n "$docker_ports" ]];then
+  public_port="$(echo "$docker_ports" | awk -F',' '{print $1}' | sed 's/^.*:\([0-9]*\)->.*$/\1/g')"
+  if [[ -n "$public_port" ]];then
+#     echo "=============" >&2
+#     echo -n "${REQUEST_METHOD} ${pass_on_uri} ${REQUEST_HTTP_VERSION}
+# ${ALL_LINES}${REQUEST_CONTENT}" >&2
+#     echo "=============" >&2
+#     echo -n "$REQUEST_METHOD $pass_on_uri $REQUEST_HTTP_VERSION
+#     ${ALL_LINES}${REQUEST_CONTENT}" \
+    echo -n "${REQUEST_METHOD} ${pass_on_uri} ${REQUEST_HTTP_VERSION}
+${ALL_LINES}${REQUEST_CONTENT}" \
+    | socat - TCP:localhost:${public_port}
     exit 0
   fi
-  if [[ "$RESPONSE_CONTENT" =~ ^HTTP\/[0-9]+\.[0-9]+\ [0-9]+ ]];then
-    echo "${RESPONSE_CONTENT}"
-  else
-    echo_response_status_line  
-    echo_response_default_headers
-    echo -e "Content-Type: text/html\r"
-    echo -e "Content-Length: ${#RESPONSE_CONTENT}\r"
-    echo -e "\r"
-    echo "${RESPONSE_CONTENT}"
-  fi
-else
-  echo_response_status_line 404 "Not Found"
-  echo_response_default_headers
-  echo -e "\r"
 fi
+
+STATUS_CODE=${1-404}
+STATUS_TEXT=${2-"Not Found"}
+echo -e "HTTP/1.0 ${STATUS_CODE} ${STATUS_TEXT}\r"
+echo -e "Date: $(date -u "+%a, %d %b %Y %T GMT")\r"
+echo -e "Expires: $(date -u "+%a, %d %b %Y %T GMT")\r"
+echo -e "Server: Socat Bash Server $SERVER_VERSION\r"
+echo -e "Connection: close\r"
+echo -e "\r"
 
