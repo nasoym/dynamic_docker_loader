@@ -13,6 +13,6 @@ esac; done; shift $(( OPTIND - 1 ))
 
 socat \
   $VERBOSE_OPTIONS \
-  TCP-LISTEN:${PORT},reuseaddr,fork \
+  OPENSSL-LISTEN:${PORT},reuseaddr,fork,verify=0,cert=ssl_test_certificates/server.pem \
   EXEC:"${SERVICE}"
 
