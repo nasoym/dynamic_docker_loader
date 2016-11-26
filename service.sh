@@ -42,12 +42,6 @@ fi
 if [[ -n "$docker_ports" ]];then
   public_port="$(echo "$docker_ports" | awk -F',' '{print $1}' | sed 's/^.*:\([0-9]*\)->.*$/\1/g')"
   if [[ -n "$public_port" ]];then
-#     echo "=============" >&2
-#     echo -n "${REQUEST_METHOD} ${pass_on_uri} ${REQUEST_HTTP_VERSION}
-# ${ALL_LINES}${REQUEST_CONTENT}" >&2
-#     echo "=============" >&2
-#     echo -n "$REQUEST_METHOD $pass_on_uri $REQUEST_HTTP_VERSION
-#     ${ALL_LINES}${REQUEST_CONTENT}" \
     echo -n "${REQUEST_METHOD} ${pass_on_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
     | socat - TCP:localhost:${public_port}
