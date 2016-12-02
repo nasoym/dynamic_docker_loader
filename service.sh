@@ -36,17 +36,25 @@ echo "pass_on_uri:$pass_on_uri" >&2
 echo "whoami:$(whoami)" >&2
 
 docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}")"
+docker_image_id="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Image}}")"
+docker_image_created="$(docker inspect ${docker_image} | jq -r '.[0].Created')"
+
 if [[ -z "$docker_ports" ]] && [[ -n "$docker_image" ]];then
-  echo "docker_image:$docker_image" >&2
-  docker run -d -P $docker_image >/dev/null
+  echo "run docker_image:$docker_image" >&2
+  docker run -d -P $docker_image >&2
   docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}")"
 fi
 if [[ -n "$docker_ports" ]];then
   public_port="$(echo "$docker_ports" | awk -F',' '{print $1}' | sed 's/^.*:\([0-9]*\)->.*$/\1/g')"
   if [[ -n "$public_port" ]];then
+    response="$( \
     echo -n "${REQUEST_METHOD} ${pass_on_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
-    | socat - TCP:localhost:${public_port}
+    | socat - TCP:localhost:${public_port} \
+    )"
+    sed -n '1p' <<<"${response}"
+    echo "Docker_Image_Created: ${docker_image_created}"
+    sed -n '2,$p' <<<"${response}"
     exit 0
   fi
 fi
