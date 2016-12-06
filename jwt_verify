@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+set -ef -o pipefail
+
+function getarg() { 
+  local varibale_name="$1"
+  local next_arg="${BASH_ARGV[$[BASH_ARGC-OPTIND]]}"
+  declare -g "${varibale_name}"=""
+  if [[ $next_arg =~ ^-$ ]] || [[ $next_arg =~ ^[^-] ]]; then
+    declare -g "${varibale_name}"="${next_arg}"
+    let "OPTIND++"
+  fi
+}
+
+while getopts ":-:" options; do 
+  case ${options} in
+  *) case "${OPTARG}" in
+      p|public_key_file) getarg public_key_file ;;
+      f|public_key_folder) getarg public_key_folder ;;
+      d|default_public_key_file) getarg default_public_key_file;;
+      j|jwt_token) getarg jwt_file ;;
+esac; esac; done; shift $((OPTIND-1))
+
+if [[ -z "$jwt_file" ]] && [[ ! -t 0 ]];then
+  jwt="$(cat /dev/stdin)"
+elif [[ -r "$jwt_file" ]];then
+  jwt="$(cat $jwt_file)"
+else
+  echo "no jwt token provided" >&2
+  exit 1
+fi
+
+
+header_and_claims="${jwt%.*}"
+signature="${jwt##*.}"
+header="$(openssl enc -base64 -d <<<"${header_and_claims%.*}")"
+claims="$(openssl enc -base64 -d <<<"${header_and_claims#*.}")"
+
+# echo "$jwt"
+# echo "header:$header"
+# echo "claims:$claims"
+# echo "signature:>$signature<"
+
+jq -M -e '.alg=="RS256"' <<<"$header" > /dev/null || { echo "alg is not RS256">&2; exit 1; }
+# case insensitive
+jq -M -e 'has("typ")' <<<"$header" > /dev/null || { echo "header is missing typ">&2; exit 1; }
+# verify exp
+# verify not to use before
+
+key_id="$(jq -M -r '.kid?' <<<"$header")"
+
+if [[ -r "${public_key_folder}/${key_id}" ]]; then
+  public_key_file="${public_key_folder}/${key_id}"
+else
+  public_key_file="${default_public_key_file}"
+fi
+[[ ! -r "$public_key_file" ]] && { echo "public_key_file: ${public_key_file} is not readable" >&2; exit 1; }
+
+echo -n "$header_and_claims" \
+  | openssl sha \
+    -sha256 \
+    -verify ${public_key_file} \
+    -signature <(echo "$signature" | openssl enc -base64 -d) \
+  || { echo "jwt verification failed" >&2; exit 1; }
+
