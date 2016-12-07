@@ -12,7 +12,7 @@ esac; done; shift $(( OPTIND - 1 ))
 : ${SERVICE:="$(dirname $0)/service.sh"}
 
 if [[ "$ssl" -eq 1 ]];then
-  socat_listen_command="OPENSSL-LISTEN:${PORT},reuseaddr,fork,verify=0,cert=ssl_test_certificates/server.pem"
+  socat_listen_command="OPENSSL-LISTEN:${PORT},reuseaddr,fork,verify=0,cert=certificate/server.pem"
 else
   socat_listen_command="TCP-LISTEN:${PORT},reuseaddr,fork"
 fi
