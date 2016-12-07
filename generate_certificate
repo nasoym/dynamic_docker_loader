@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -ef -o pipefail
+
+rm -rf certificate
+mkdir certificate
+openssl genrsa -out certificate/server.key 2048
+openssl req \
+  -new \
+  -key certificate/server.key \
+  -x509 \
+  -days 365 \
+  -out certificate/server.crt \
+  -subj "/C=GE/ST=Berlin/L=Berlin/O=Nasoym/CN=nasoym.de"
+
+cat certificate/server.key certificate/server.crt >certificate/server.pem
+chmod 600 certificate/server.key certificate/server.pem
+
