@@ -4,17 +4,17 @@ set -ef -o pipefail
 while getopts "p:vs" OPTIONS; do case $OPTIONS in
   v) VERBOSE_OPTIONS="-vv" ;;
   p) PORT="$OPTARG" ;;
-  s) ssl="1" ;;
+  i) ssl="0" ;;
 esac; done; shift $(( OPTIND - 1 ))
 
 : ${PORT:="8080"}
 : ${VERBOSE_OPTIONS:=""}
 : ${SERVICE:="$(dirname $0)/service.sh"}
 
-if [[ "$ssl" -eq 1 ]];then
-  socat_listen_command="OPENSSL-LISTEN:${PORT},reuseaddr,fork,verify=0,cert=certificate/server.pem"
-else
+if [[ "$ssl" -eq 0 ]];then
   socat_listen_command="TCP-LISTEN:${PORT},reuseaddr,fork"
+else
+  socat_listen_command="OPENSSL-LISTEN:${PORT},reuseaddr,fork,verify=0,cert=certificate/server.pem"
 fi
 
 socat \
