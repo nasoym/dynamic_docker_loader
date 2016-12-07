@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 set -ef -o pipefail
 
-rm -rf certificate
-mkdir certificate
-openssl genrsa -out certificate/server.key 2048
+mkdir -p certificate
+if [ ! -r certificate/server.key ]; then
+  openssl genrsa -out certificate/server.key 1024
+fi
 openssl req \
   -new \
   -key certificate/server.key \
   -x509 \
   -days 365 \
   -out certificate/server.crt \
-  -subj "/C=GE/ST=Berlin/L=Berlin/O=Nasoym/CN=nasoym.de"
+  -subj "/C=GE/ST=Berlin/L=Berlin/O=Nasoym/CN=localhost"
 
 cat certificate/server.key certificate/server.crt >certificate/server.pem
+if [ ! -r certificate/dhparams.pem ]; then
+  openssl dhparam -out certificate/dhparams.pem 1024
+fi
+cat certificate/dhparams.pem >> certificate/server.pem
 chmod 600 certificate/server.key certificate/server.pem
+
 
