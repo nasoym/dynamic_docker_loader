@@ -36,7 +36,7 @@ fi
 
 echo "=======================================================" >&2
 
-if ./jwt_verify -f ../ssl_testing/keys >/dev/null <<<"$AUTHORIZATION_JWT_TOKEN"; then
+if ./jwt_verify -f public_jwt_keys >/dev/null <<<"$AUTHORIZATION_JWT_TOKEN"; then
   echo "jwt verified" >&2
 else
   echo "jwt NOT verified" >&2
