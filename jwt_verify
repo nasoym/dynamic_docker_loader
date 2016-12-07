@@ -60,6 +60,6 @@ echo -n "$header_and_claims" \
   | openssl sha \
     -sha256 \
     -verify ${public_key_file} \
-    -signature <(echo "$signature" | openssl enc -base64 -d) \
+    -signature <(echo "$signature" | base64 -d) \
   || { echo "jwt verification failed" >&2; exit 1; }
 
