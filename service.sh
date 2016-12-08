@@ -4,6 +4,52 @@ set -ef -o pipefail
 
 function upper() { echo "$@" | tr '[:lower:]' '[:upper:]'; }
 
+function echo_response_default_headers() { 
+  # DATE=$(date +"%a, %d %b %Y %H:%M:%S %Z")
+  echo -e "Date: $(date -u "+%a, %d %b %Y %T GMT")\r"
+  echo -e "Expires: $(date -u "+%a, %d %b %Y %T GMT")\r"
+  echo -e "Connection: close\r"
+}
+
+function echo_response_status_line() { 
+  local STATUS_CODE STATUS_TEXT
+  STATUS_CODE=${1-200}
+  STATUS_TEXT=${2-OK}
+  echo -e "HTTP/1.0 ${STATUS_CODE} ${STATUS_TEXT}\r"
+}
+
+function extract_docker_information_from_path() {
+  local docker_port docker_version docker_repository docker_request_uri
+  if [[ "$1" =~ ^/([0-9]+)/([0-9]+\.[0-9]+\.[0-9]+)/([^/]+)(/.*)$ ]];then
+    docker_port="${BASH_REMATCH[1]}"
+    docker_version="${BASH_REMATCH[2]}"
+    docker_repository="${BASH_REMATCH[3]}"
+    docker_request_uri="${BASH_REMATCH[4]}"
+  elif [[ "$1" =~ ^/([0-9]+)/([^/]+)(/.*)$ ]];then
+    docker_port="${BASH_REMATCH[1]}"
+    docker_repository="${BASH_REMATCH[2]}"
+    docker_request_uri="${BASH_REMATCH[3]}"
+    if [[ "$docker_repository" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]];then
+      docker_port="-"
+      docker_repository="-"
+    fi
+  elif [[ "$1" =~ ^/([0-9]+\.[0-9]+\.[0-9]+)/([^/]+)(/.*)$ ]];then
+    docker_version="${BASH_REMATCH[1]}"
+    docker_repository="${BASH_REMATCH[2]}"
+    docker_request_uri="${BASH_REMATCH[3]}"
+  elif [[ "$1" =~ ^/([^/]+)(/.*)$ ]];then
+    docker_repository="${BASH_REMATCH[1]}"
+    docker_request_uri="${BASH_REMATCH[2]}"
+  else
+    docker_repository=""
+  fi
+  : ${docker_port:="-"}
+  : ${docker_version:="latest"}
+  echo "$docker_port" "$docker_version" "$docker_repository" "$docker_request_uri"
+}
+
+: ${DOCKER_NAMESPACE:="nasoym"}
+
 read -r REQUEST_METHOD REQUEST_URI REQUEST_HTTP_VERSION
 
 ALL_LINES=""
@@ -28,76 +74,90 @@ if [[ -n "$CONTENT_LENGTH" ]] && [[ "$CONTENT_LENGTH" -gt "0" ]];then
   read -r -d '' -n "$CONTENT_LENGTH" REQUEST_CONTENT
 fi
 
-AUTHORIZATION_TYPE="${AUTHORIZATION//JWT *.*/JWT}"
-AUTHORIZATION_JWT_TOKEN="${AUTHORIZATION#JWT }"
-if [[ ! "$AUTHORIZATION_TYPE" =~ ^JWT$ ]];then
-  echo "only jwt authorization is supported" >&2
-fi
-
-echo "=======================================================" >&2
-
-if ./jwt_verify -f public_jwt_keys >/dev/null <<<"$AUTHORIZATION_JWT_TOKEN"; then
-  echo "jwt verified" >&2
-else
-  echo "jwt NOT verified" >&2
-  STATUS_CODE=${1-401}
-  STATUS_TEXT=${2-"Unauthorized"}
-  echo -e "HTTP/1.0 ${STATUS_CODE} ${STATUS_TEXT}\r"
-  echo -e "Date: $(date -u "+%a, %d %b %Y %T GMT")\r"
-  echo -e "Expires: $(date -u "+%a, %d %b %Y %T GMT")\r"
-  echo -e "Server: Socat Bash Server $SERVER_VERSION\r"
-  echo -e "Connection: close\r"
-  echo -e "\r"
+read docker_port docker_version docker_repository docker_request_uri < <(extract_docker_information_from_path "$REQUEST_URI")
+if [[ -z "$docker_repository" ]]; then
+  echo_response_status_line 404 "Not Found"
   exit
 fi
 
-pass_on_uri="$( echo "$REQUEST_URI" | sed 's/^\/[^\/]\+\/[^\/]\+\(\/.*$\)/\1/g' )"
-docker_image="$( echo "$REQUEST_URI" | sed 's/^\/\([^\/]\+\/[^\/]\+\)\/.*$/\1/g' )"
-docker_image="$( echo "$docker_image" | sed -e 's/^_\///g' -e 's/\/_$//g')"
+authorization_type="${AUTHORIZATION%% *}"
+authorization_token="${AUTHORIZATION#* }"
 
-echo "method:$REQUEST_METHOD" >&2
-echo "original:$REQUEST_URI" >&2
-echo "docker_image:$docker_image" >&2
-echo "pass_on_uri:$pass_on_uri" >&2
-echo "whoami:$(whoami)" >&2
-# echo "authorization:${AUTHORIZATION}" >&2
-# echo "authorization_jwt:${AUTHORIZATION_JWT_TOKEN}" >&2
-# echo "authorization_type:${AUTHORIZATION_TYPE}<" >&2
-
-docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}" || true)"
-docker_image_id="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Image}}" || true)"
-docker_image_created="$(docker inspect ${docker_image} | jq -r '.[0].Created' || true)"
-
-echo "docker_image_id:$docker_image_id" >&2
-echo "docker_ports:$docker_ports" >&2
-
-if [[ -z "$docker_ports" ]] && [[ -n "$docker_image" ]];then
-  echo "run docker_image:$docker_image" >&2
-  docker run -d -P $docker_image >&2 || true
-  docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}" || true)"
+shopt -s nocasematch
+if [[ ! "$authorization_type" =~ ^jwt$ ]];then
+  echo_response_status_line 401 "Unauthorized"
+  exit
 fi
+
+if [[ $DRY_RUN -eq 1 ]];then
+  echo "REQUEST_URI:$REQUEST_URI"
+  echo "docker_port:$docker_port"
+  echo "docker_version:$docker_version"
+  echo "docker_repository:$docker_repository"
+  echo "docker_request_uri:$docker_request_uri"
+
+  echo "AUTHORIZATION:$AUTHORIZATION"
+  echo "authorization_type:$authorization_type"
+  echo "authorization_token:$authorization_token"
+fi
+
+if [[ $DRY_RUN -ne 1 ]];then
+  if ! ./jwt_verify -f public_jwt_keys >/dev/null <<<"$authorization_token"; then
+    echo_response_status_line 401 "Unauthorized"
+    exit
+  fi
+fi
+
+# docker_image_created="$(docker inspect ${docker_repository} | jq -r '.[0].Created' || true)"
+# 0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp
+# 0.0.0.0:32770->8080/tcp
+
+if [[ $DRY_RUN -eq 1 ]];then
+  docker_image_id="docker_image_id"
+  docker_ports="0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp"
+else
+  docker_image_id="$(docker ps -f status=running -f ancestor=${docker_repository} --format "{{.Image}}" || true)"
+  if [[ -z "$docker_image_id" ]];then
+    docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository} >&2 >/dev/null || true
+    docker_ports="$(docker ps -f status=running -f ancestor=${docker_repository} --format "{{.Ports}}" || true)"
+  fi
+  docker_ports="$(docker ps -f status=running -f ancestor=${docker_repository} --format "{{.Ports}}" || true)"
+fi
+
+if [[ $DRY_RUN -eq 1 ]];then
+  echo "docker_image_id:$docker_image_id"
+  echo "docker_ports:$docker_ports"
+fi
+
 if [[ -n "$docker_ports" ]];then
-  public_port="$(echo "$docker_ports" | awk -F',' '{print $1}' | sed 's/^.*:\([0-9]*\)->.*$/\1/g')"
+  if [[ "$docker_port" == "-" ]];then
+    public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{print \$2;exit}" <<<"$docker_ports")"
+  else
+    public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{if (\$3==\"${docker_port}/tcp\"){print \$2}}" <<<"$docker_ports")"
+  fi
+
   if [[ -n "$public_port" ]];then
-    echo "public_port:$public_port" >&2
-    response="$( \
-    echo -n "${REQUEST_METHOD} ${pass_on_uri} ${REQUEST_HTTP_VERSION}
+    if [[ $DRY_RUN -eq 1 ]];then
+      echo "public_port:$public_port"
+      response="response
+1
+2
+3
+      "
+    else
+      response="$( \
+      echo -n "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
-    | socat - TCP:localhost:${public_port},shut-none \
-    )"
+      | socat - TCP:localhost:${public_port},shut-none \
+      )"
+    fi
     sed -n '1p' <<<"${response}"
     echo "Docker_Image_Created: ${docker_image_created}"
     sed -n '2,$p' <<<"${response}"
+    # echo "${response}"
     exit 0
   fi
 fi
 
-STATUS_CODE=${1-404}
-STATUS_TEXT=${2-"Not Found"}
-echo -e "HTTP/1.0 ${STATUS_CODE} ${STATUS_TEXT}\r"
-echo -e "Date: $(date -u "+%a, %d %b %Y %T GMT")\r"
-echo -e "Expires: $(date -u "+%a, %d %b %Y %T GMT")\r"
-echo -e "Server: Socat Bash Server $SERVER_VERSION\r"
-echo -e "Connection: close\r"
-echo -e "\r"
+echo_response_status_line 404 "Not Found"
 
