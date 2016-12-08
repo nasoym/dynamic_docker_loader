@@ -64,17 +64,17 @@ echo "whoami:$(whoami)" >&2
 # echo "authorization_jwt:${AUTHORIZATION_JWT_TOKEN}" >&2
 # echo "authorization_type:${AUTHORIZATION_TYPE}<" >&2
 
-docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}")"
-docker_image_id="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Image}}")"
-docker_image_created="$(docker inspect ${docker_image} | jq -r '.[0].Created')"
+docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}" || true)"
+docker_image_id="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Image}}" || true)"
+docker_image_created="$(docker inspect ${docker_image} | jq -r '.[0].Created' || true)"
 
 echo "docker_image_id:$docker_image_id" >&2
 echo "docker_ports:$docker_ports" >&2
 
 if [[ -z "$docker_ports" ]] && [[ -n "$docker_image" ]];then
   echo "run docker_image:$docker_image" >&2
-  docker run -d -P $docker_image >&2
-  docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}")"
+  docker run -d -P $docker_image >&2 || true
+  docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Ports}}" || true)"
 fi
 if [[ -n "$docker_ports" ]];then
   public_port="$(echo "$docker_ports" | awk -F',' '{print $1}' | sed 's/^.*:\([0-9]*\)->.*$/\1/g')"
