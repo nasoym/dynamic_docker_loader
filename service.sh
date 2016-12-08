@@ -113,12 +113,12 @@ if [[ $DRY_RUN -eq 1 ]];then
   docker_image_id="docker_image_id"
   docker_ports="0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp"
 else
-  docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository} --format "{{.Image}}" || true)"
+  docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
   if [[ -z "$docker_image_id" ]];then
-    docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository} >&2 >/dev/null || true
-    docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository} --format "{{.Ports}}" || true)"
+    docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
+    docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
   fi
-  docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository} --format "{{.Ports}}" || true)"
+  docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
 fi
 
 if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
@@ -149,7 +149,7 @@ ${ALL_LINES}${REQUEST_CONTENT}"
 3
       "
     else
-      docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository} | jq -r '.[0].Created' || true)"
+      docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
       response="$( \
       echo -n "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
