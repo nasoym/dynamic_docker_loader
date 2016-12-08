@@ -89,7 +89,7 @@ if [[ ! "$authorization_type" =~ ^jwt$ ]];then
   exit
 fi
 
-if [[ $DRY_RUN -eq 1 ]];then
+if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
   echo "REQUEST_URI:$REQUEST_URI"
   echo "docker_port:$docker_port"
   echo "docker_version:$docker_version"
@@ -124,7 +124,7 @@ else
   docker_ports="$(docker ps -f status=running -f ancestor=${docker_repository} --format "{{.Ports}}" || true)"
 fi
 
-if [[ $DRY_RUN -eq 1 ]];then
+if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
   echo "docker_image_id:$docker_image_id"
   echo "docker_ports:$docker_ports"
 fi
@@ -137,8 +137,10 @@ if [[ -n "$docker_ports" ]];then
   fi
 
   if [[ -n "$public_port" ]];then
-    if [[ $DRY_RUN -eq 1 ]];then
+    if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
       echo "public_port:$public_port"
+    fi
+    if [[ $DRY_RUN -eq 1 ]];then
       response="response
 1
 2
@@ -151,10 +153,10 @@ ${ALL_LINES}${REQUEST_CONTENT}" \
       | socat - TCP:localhost:${public_port},shut-none \
       )"
     fi
-    sed -n '1p' <<<"${response}"
-    echo "Docker_Image_Created: ${docker_image_created}"
-    sed -n '2,$p' <<<"${response}"
-    # echo "${response}"
+    # sed -n '1p' <<<"${response}"
+    # echo "Docker_Image_Created: ${docker_image_created}"
+    # sed -n '2,$p' <<<"${response}"
+    echo "${response}"
     exit 0
   fi
 fi
