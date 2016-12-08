@@ -158,6 +158,7 @@ ${ALL_LINES}${REQUEST_CONTENT}" \
     fi
     sed -n '1p' <<<"${response}"
     echo "Docker_Image_Created: ${docker_image_created}"
+    echo "Docker_Image_Name: ${docker_image_id}"
     sed -n '2,$p' <<<"${response}"
     # echo "${response}"
     exit 0
