@@ -68,6 +68,9 @@ docker_ports="$(docker ps -f status=running -f ancestor=${docker_image} --format
 docker_image_id="$(docker ps -f status=running -f ancestor=${docker_image} --format "{{.Image}}")"
 docker_image_created="$(docker inspect ${docker_image} | jq -r '.[0].Created')"
 
+echo "docker_image_id:$docker_image_id" >&2
+echo "docker_ports:$docker_ports" >&2
+
 if [[ -z "$docker_ports" ]] && [[ -n "$docker_image" ]];then
   echo "run docker_image:$docker_image" >&2
   docker run -d -P $docker_image >&2
@@ -76,6 +79,7 @@ fi
 if [[ -n "$docker_ports" ]];then
   public_port="$(echo "$docker_ports" | awk -F',' '{print $1}' | sed 's/^.*:\([0-9]*\)->.*$/\1/g')"
   if [[ -n "$public_port" ]];then
+    echo "public_port:$public_port" >&2
     response="$( \
     echo -n "${REQUEST_METHOD} ${pass_on_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
