@@ -108,20 +108,17 @@ if [[ $DRY_RUN -ne 1 ]];then
   fi
 fi
 
-# docker_image_created="$(docker inspect ${docker_repository} | jq -r '.[0].Created' || true)"
-# 0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp
-# 0.0.0.0:32770->8080/tcp
 
 if [[ $DRY_RUN -eq 1 ]];then
   docker_image_id="docker_image_id"
   docker_ports="0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp"
 else
-  docker_image_id="$(docker ps -f status=running -f ancestor=${docker_repository} --format "{{.Image}}" || true)"
+  docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository} --format "{{.Image}}" || true)"
   if [[ -z "$docker_image_id" ]];then
     docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository} >&2 >/dev/null || true
-    docker_ports="$(docker ps -f status=running -f ancestor=${docker_repository} --format "{{.Ports}}" || true)"
+    docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository} --format "{{.Ports}}" || true)"
   fi
-  docker_ports="$(docker ps -f status=running -f ancestor=${docker_repository} --format "{{.Ports}}" || true)"
+  docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository} --format "{{.Ports}}" || true)"
 fi
 
 if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
@@ -139,6 +136,11 @@ if [[ -n "$docker_ports" ]];then
   if [[ -n "$public_port" ]];then
     if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
       echo "public_port:$public_port"
+
+      echo "execute request:"
+      echo -n "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
+${ALL_LINES}${REQUEST_CONTENT}"
+
     fi
     if [[ $DRY_RUN -eq 1 ]];then
       response="response
@@ -147,16 +149,17 @@ if [[ -n "$docker_ports" ]];then
 3
       "
     else
+      docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository} | jq -r '.[0].Created' || true)"
       response="$( \
       echo -n "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
       | socat - TCP:localhost:${public_port},shut-none \
       )"
     fi
-    # sed -n '1p' <<<"${response}"
-    # echo "Docker_Image_Created: ${docker_image_created}"
-    # sed -n '2,$p' <<<"${response}"
-    echo "${response}"
+    sed -n '1p' <<<"${response}"
+    echo "Docker_Image_Created: ${docker_image_created}"
+    sed -n '2,$p' <<<"${response}"
+    # echo "${response}"
     exit 0
   fi
 fi
