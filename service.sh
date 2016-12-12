@@ -19,7 +19,8 @@ function echo_response_status_line() {
 }
 
 function extract_docker_information_from_path() {
-  local docker_port docker_version docker_repository docker_request_uri
+  local docker_port docker_version docker_repository docker_request_uri internal_path
+  docker_repository=""
   if [[ "$1" =~ ^/([0-9]+)/([0-9]+\.[0-9]+\.[0-9]+)/([^/]+)(/.*)$ ]];then
     docker_port="${BASH_REMATCH[1]}"
     docker_version="${BASH_REMATCH[2]}"
@@ -40,12 +41,17 @@ function extract_docker_information_from_path() {
   elif [[ "$1" =~ ^/([^/]+)(/.*)$ ]];then
     docker_repository="${BASH_REMATCH[1]}"
     docker_request_uri="${BASH_REMATCH[2]}"
+  elif [[ "$1" =~ ^/([^/]+)$ ]];then
+    # docker_repository=""
+    internal_path="${BASH_REMATCH[1]}"
+    echo "found internal path:$internal_path" >&2
   else
     docker_repository=""
   fi
+  : ${internal_path:="-"}
   : ${docker_port:="-"}
   : ${docker_version:="latest"}
-  echo "$docker_port" "$docker_version" "$docker_repository" "$docker_request_uri"
+  echo "$internal_path" "$docker_port" "$docker_version" "$docker_repository" "$docker_request_uri"
 }
 
 : ${DOCKER_NAMESPACE:="nasoym"}
@@ -74,19 +80,67 @@ if [[ -n "$CONTENT_LENGTH" ]] && [[ "$CONTENT_LENGTH" -gt "0" ]];then
   read -r -d '' -n "$CONTENT_LENGTH" REQUEST_CONTENT
 fi
 
-read docker_port docker_version docker_repository docker_request_uri < <(extract_docker_information_from_path "$REQUEST_URI")
-if [[ -z "$docker_repository" ]]; then
+read internal_path docker_port docker_version docker_repository docker_request_uri < <(extract_docker_information_from_path "$REQUEST_URI")
+if [[ -z "$docker_repository" && "$internal_path" == "-" ]]; then
   echo_response_status_line 404 "Not Found"
   exit
+fi
+
+# echo "1::: $internal_path" >&2
+
+if [[ "$internal_path" != "-" ]];then
+  echo_response_status_line 200 "Ok"
+  echo
+  if [[ "$internal_path" == "update" ]];then
+    echo "update"
+    images_to_update="$(max_time_diff=120 ./dockerhub_list)"
+    echo "images_to_update:$images_to_update"
+
+    DOCKER_NAMESPACE="nasoym"
+    for docker_repository in $images_to_update; do
+      echo ">>>$docker_repository"
+      docker_container_id="$(docker ps -f ancestor=${DOCKER_NAMESPACE}/${docker_repository} --format "{{.ID}}" || true)"
+      echo "active docker_container_id:${docker_container_id}"
+      for container_id in $docker_container_id; do
+        echo "remove container: ${container_id}"
+        docker rm -f ${container_id}
+      done
+      docker pull ${DOCKER_NAMESPACE}/$docker_repository
+    done
+    # echo "$images_to_update" | parallel 'docker pull nasoym/{}'
+  # docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
+
+  elif [[ "$internal_path" == "remove" ]];then
+    :
+    echo "remove all containers"
+    docker_container_id="$(docker ps -a --format "{{.ID}}" || true)"
+    echo "docker_container_id:${docker_container_id}"
+    for container_id in $docker_container_id; do
+      echo "remove container: ${container_id}"
+      docker rm -f ${container_id}
+    done
+  elif [[ "$internal_path" == "stop" ]];then
+    :
+    echo "stop all containers"
+    docker_container_id="$(docker ps -f status=running --format "{{.ID}}" || true)"
+    echo "docker_container_id:${docker_container_id}"
+    for container_id in $docker_container_id; do
+      echo "stop container: ${container_id}"
+      docker stop ${container_id}
+    done
+  fi
+  exit 0
 fi
 
 authorization_type="${AUTHORIZATION%% *}"
 authorization_token="${AUTHORIZATION#* }"
 
-shopt -s nocasematch
-if [[ ! "$authorization_type" =~ ^jwt$ ]];then
-  echo_response_status_line 401 "Unauthorized"
-  exit
+if [[ "$no_auth" -ne 1 ]];then
+  shopt -s nocasematch
+  if [[ ! "$authorization_type" =~ ^jwt$ ]];then
+    echo_response_status_line 401 "Unauthorized"
+    exit
+  fi
 fi
 
 if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
@@ -101,13 +155,14 @@ if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
   echo "authorization_token:$authorization_token"
 fi
 
-if [[ $DRY_RUN -ne 1 ]];then
-  if ! ./jwt_verify -f public_jwt_keys >/dev/null <<<"$authorization_token"; then
-    echo_response_status_line 401 "Unauthorized"
-    exit
+if [[ "$no_auth" -ne 1 ]];then
+  if [[ $DRY_RUN -ne 1 ]];then
+    if ! ./jwt_verify -f public_jwt_keys >/dev/null <<<"$authorization_token"; then
+      echo_response_status_line 401 "Unauthorized"
+      exit
+    fi
   fi
 fi
-
 
 if [[ $DRY_RUN -eq 1 ]];then
   docker_image_id="docker_image_id"
@@ -115,10 +170,14 @@ if [[ $DRY_RUN -eq 1 ]];then
 else
   docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
   if [[ -z "$docker_image_id" ]];then
+    echo "launch docker container: ${docker_repository}" >&2
     docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
-    docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
+    # docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
+  else
+    echo "found running docker image: $docker_image_id" >&2
   fi
   docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
+  echo "docker_ports:${docker_ports}" >&2
 fi
 
 if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
@@ -132,6 +191,7 @@ if [[ -n "$docker_ports" ]];then
   else
     public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{if (\$3==\"${docker_port}/tcp\"){print \$2}}" <<<"$docker_ports")"
   fi
+  echo "use public port:${public_port}" >&2
 
   if [[ -n "$public_port" ]];then
     if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
@@ -150,19 +210,26 @@ ${ALL_LINES}${REQUEST_CONTENT}"
       "
     else
       docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
+      echo "execute request: ${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
+${ALL_LINES}${REQUEST_CONTENT}" >&2
       response="$( \
       echo -n "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
       | socat - TCP:localhost:${public_port},shut-none \
       )"
     fi
+    echo "got response from container: ${response}" >&2
     sed -n '1p' <<<"${response}"
     echo "Docker_Image_Created: ${docker_image_created}"
     echo "Docker_Image_Name: ${docker_image_id}"
     sed -n '2,$p' <<<"${response}"
     # echo "${response}"
     exit 0
+  else
+    echo "no public port found" >&2
   fi
+else
+  echo "no docker ports found" >&2
 fi
 
 echo_response_status_line 404 "Not Found"
