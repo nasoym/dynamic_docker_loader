@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 set -ef -o pipefail
 
-while getopts "p:vi" options; do case $options in
+while getopts "p:vin" options; do case $options in
   v) VERBOSE_OPTIONS="-vv" ;;
   p) PORT="$OPTARG" ;;
   i) insecure=1 ;;
+  n) no_auth=1 ;;
 esac; done; shift $(( OPTIND - 1 ))
+
+: ${no_auth:=0}
+export no_auth
 
 : ${PORT:="8080"}
 : ${VERBOSE_OPTIONS:=""}
