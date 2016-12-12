@@ -33,8 +33,15 @@ fi
 
 header_and_claims="${jwt%.*}"
 signature="${jwt##*.}"
-header="$(openssl enc -base64 -d <<<"${header_and_claims%.*}")"
-claims="$(openssl enc -base64 -d <<<"${header_and_claims#*.}")"
+# header="$(openssl enc -base64 -d <<<"${header_and_claims%.*}")"
+# claims="$(openssl enc -base64 -d <<<"${header_and_claims#*.}")"
+
+header_base64="${header_and_claims%.*}"
+claims_base64="${header_and_claims#*.}"
+header="$(echo -n "${header_base64}=========================" | base64 --decode )"
+claims="$(echo -n "${claims_base64}=========================" | base64 --decode )"
+
+
 
 # echo "$jwt"
 # echo "header:$header"
@@ -60,6 +67,6 @@ echo -n "$header_and_claims" \
   | openssl sha \
     -sha256 \
     -verify ${public_key_file} \
-    -signature <(echo "$signature" | base64 -d) \
+    -signature <(echo "$signature" | base64 --decode) \
   || { echo "jwt verification failed" >&2; exit 1; }
 
