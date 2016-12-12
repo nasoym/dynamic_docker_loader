@@ -4,6 +4,7 @@
 * get newly successfully build docker hub images of all installed docker images
   * explore dockerhub api
   * what happens when a dockerhub build fails
+    * unsuccessfull build are not mentioned in the list api
 * delete unused docker containers
   * based on access log
 * write access log
