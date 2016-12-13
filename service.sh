@@ -128,6 +128,9 @@ if [[ "$internal_path" != "-" ]];then
       echo "stop container: ${container_id}"
       docker stop ${container_id}
     done
+  elif [[ "$internal_path" == "logs" ]];then
+    :
+    echo "logs"
   fi
   exit 0
 fi
