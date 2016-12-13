@@ -55,6 +55,7 @@ function extract_docker_information_from_path() {
 }
 
 : ${DOCKER_NAMESPACE:="nasoym"}
+: ${LOG_FILE:="logs/logs"}
 
 read -r REQUEST_METHOD REQUEST_URI REQUEST_HTTP_VERSION
 
@@ -80,8 +81,11 @@ if [[ -n "$CONTENT_LENGTH" ]] && [[ "$CONTENT_LENGTH" -gt "0" ]];then
   read -r -d '' -n "$CONTENT_LENGTH" REQUEST_CONTENT
 fi
 
+echo "$(date +%FT%T): pid:$$ request:${REQUEST_METHOD} to:${REQUEST_URI} from:${SOCAT_PEERADDR}:${SOCAT_PEERPORT}" >> ${LOG_FILE}
+
 read internal_path docker_port docker_version docker_repository docker_request_uri < <(extract_docker_information_from_path "$REQUEST_URI")
 if [[ -z "$docker_repository" && "$internal_path" == "-" ]]; then
+  echo "$(date +%FT%T): pid:$$ no docker_repository or internal_path" >> ${LOG_FILE}
   echo_response_status_line 404 "Not Found"
   exit
 fi
@@ -91,6 +95,7 @@ fi
 if [[ "$internal_path" != "-" ]];then
   echo_response_status_line 200 "Ok"
   echo
+  echo "$(date +%FT%T): pid:$$ handle internal_path:${internal_path}" >> ${LOG_FILE}
   if [[ "$internal_path" == "update" ]];then
     echo "update"
     images_to_update="$(max_time_diff=120 ./dockerhub_list)"
@@ -131,6 +136,9 @@ if [[ "$internal_path" != "-" ]];then
   elif [[ "$internal_path" == "logs" ]];then
     :
     echo "logs"
+    if [[ -r ${LOG_FILE} ]]; then
+      cat ${LOG_FILE}
+    fi
   fi
   exit 0
 fi
@@ -141,6 +149,7 @@ authorization_token="${AUTHORIZATION#* }"
 if [[ "$no_auth" -ne 1 ]];then
   shopt -s nocasematch
   if [[ ! "$authorization_type" =~ ^jwt$ ]];then
+    echo "$(date +%FT%T): pid:$$ no jwt authorization found" >> ${LOG_FILE}
     echo_response_status_line 401 "Unauthorized"
     exit
   fi
@@ -161,6 +170,7 @@ fi
 if [[ "$no_auth" -ne 1 ]];then
   if [[ $DRY_RUN -ne 1 ]];then
     if ! ./jwt_verify -f public_jwt_keys >/dev/null <<<"$authorization_token"; then
+      echo "$(date +%FT%T): pid:$$ jwt signature failed" >> ${LOG_FILE}
       echo_response_status_line 401 "Unauthorized"
       exit
     fi
@@ -173,14 +183,12 @@ if [[ $DRY_RUN -eq 1 ]];then
 else
   docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
   if [[ -z "$docker_image_id" ]];then
-    echo "launch docker container: ${docker_repository}" >&2
+    echo "$(date +%FT%T): pid:$$ launch docker container: ${docker_repository}" >> ${LOG_FILE}
     docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
-    # docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
   else
-    echo "found running docker image: $docker_image_id" >&2
+    echo "$(date +%FT%T): pid:$$ found running docker image: $docker_image_id" >> ${LOG_FILE}
   fi
   docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
-  echo "docker_ports:${docker_ports}" >&2
 fi
 
 if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
@@ -189,12 +197,13 @@ if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
 fi
 
 if [[ -n "$docker_ports" ]];then
+  echo "$(date +%FT%T): pid:$$ found public docker ports:${docker_ports}" >> ${LOG_FILE}
   if [[ "$docker_port" == "-" ]];then
     public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{print \$2;exit}" <<<"$docker_ports")"
   else
     public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{if (\$3==\"${docker_port}/tcp\"){print \$2}}" <<<"$docker_ports")"
   fi
-  echo "use public port:${public_port}" >&2
+  echo "$(date +%FT%T): pid:$$ use public port:${public_port}" >> ${LOG_FILE}
 
   if [[ -n "$public_port" ]];then
     if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
@@ -213,27 +222,27 @@ ${ALL_LINES}${REQUEST_CONTENT}"
       "
     else
       docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
-      echo "execute request: ${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
-${ALL_LINES}${REQUEST_CONTENT}" >&2
+      echo "$(date +%FT%T): pid:$$ execute request: ${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
+${ALL_LINES}${REQUEST_CONTENT}" >> ${LOG_FILE}
       response="$( \
       echo "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
       | socat - TCP:localhost:${public_port},shut-none \
       )"
     fi
-    echo "got response from container: ${response}" >&2
+    # echo "got response from container: ${response}" >&2
     sed -n '1p' <<<"${response}"
     echo "Docker_Image_Created: ${docker_image_created}"
     echo "Docker_Image_Name: ${docker_image_id}"
     sed -n '2,$p' <<<"${response}"
-    # echo "${response}"
     exit 0
   else
-    echo "no public port found" >&2
+    echo "$(date +%FT%T): pid:$$ no public port found" >> ${LOG_FILE}
   fi
 else
-  echo "no docker ports found" >&2
+  echo "$(date +%FT%T): pid:$$ no docker ports found" >> ${LOG_FILE}
 fi
 
+echo "$(date +%FT%T): pid:$$ default reaction 404" >> ${LOG_FILE}
 echo_response_status_line 404 "Not Found"
 
