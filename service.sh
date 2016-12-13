@@ -213,7 +213,7 @@ ${ALL_LINES}${REQUEST_CONTENT}"
       echo "execute request: ${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" >&2
       response="$( \
-      echo -n "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
+      echo "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
       | socat - TCP:localhost:${public_port},shut-none \
       )"
