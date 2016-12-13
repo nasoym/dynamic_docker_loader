@@ -53,7 +53,6 @@ function extract_docker_information_from_path() {
   elif [[ "$1" =~ ^/([^/]+)$ ]];then
     # docker_repository=""
     internal_path="${BASH_REMATCH[1]}"
-    echo "found internal path:$internal_path" >&2
   else
     docker_repository=""
   fi
