@@ -54,6 +54,14 @@ function extract_docker_information_from_path() {
   echo "$internal_path" "$docker_port" "$docker_version" "$docker_repository" "$docker_request_uri"
 }
 
+function log() {
+  if [[ -n "$LOG_FILE" ]];then
+    echo "$(date +%FT%T) [$$] $@" >>${LOG_FILE}
+  else
+    echo "$(date +%FT%T) [$$] $@" >&2
+  fi
+}
+
 : ${DOCKER_NAMESPACE:="nasoym"}
 : ${LOG_FILE:="logs/logs"}
 
@@ -81,11 +89,11 @@ if [[ -n "$CONTENT_LENGTH" ]] && [[ "$CONTENT_LENGTH" -gt "0" ]];then
   read -r -d '' -n "$CONTENT_LENGTH" REQUEST_CONTENT
 fi
 
-echo "$(date +%FT%T): pid:$$ request:${REQUEST_METHOD} to:${REQUEST_URI} from:${SOCAT_PEERADDR}:${SOCAT_PEERPORT}" >> ${LOG_FILE}
+log "${SOCAT_PEERADDR}:${SOCAT_PEERPORT} ${REQUEST_METHOD} ${REQUEST_URI}"
 
 read internal_path docker_port docker_version docker_repository docker_request_uri < <(extract_docker_information_from_path "$REQUEST_URI")
 if [[ -z "$docker_repository" && "$internal_path" == "-" ]]; then
-  echo "$(date +%FT%T): pid:$$ no docker_repository or internal_path" >> ${LOG_FILE}
+  log "no docker_repository or internal_path"
   echo_response_status_line 404 "Not Found"
   exit
 fi
@@ -95,7 +103,7 @@ fi
 if [[ "$internal_path" != "-" ]];then
   echo_response_status_line 200 "Ok"
   echo
-  echo "$(date +%FT%T): pid:$$ handle internal_path:${internal_path}" >> ${LOG_FILE}
+  log "handle internal_path:${internal_path}"
   if [[ "$internal_path" == "update" ]];then
     echo "update"
     images_to_update="$(max_time_diff=120 ./dockerhub_list)"
@@ -149,7 +157,7 @@ authorization_token="${AUTHORIZATION#* }"
 if [[ "$no_auth" -ne 1 ]];then
   shopt -s nocasematch
   if [[ ! "$authorization_type" =~ ^jwt$ ]];then
-    echo "$(date +%FT%T): pid:$$ no jwt authorization found" >> ${LOG_FILE}
+    log "no jwt authorization found"
     echo_response_status_line 401 "Unauthorized"
     exit
   fi
@@ -170,7 +178,7 @@ fi
 if [[ "$no_auth" -ne 1 ]];then
   if [[ $DRY_RUN -ne 1 ]];then
     if ! ./jwt_verify -f public_jwt_keys >/dev/null <<<"$authorization_token"; then
-      echo "$(date +%FT%T): pid:$$ jwt signature failed" >> ${LOG_FILE}
+      log "jwt signature failed"
       echo_response_status_line 401 "Unauthorized"
       exit
     fi
@@ -183,10 +191,10 @@ if [[ $DRY_RUN -eq 1 ]];then
 else
   docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
   if [[ -z "$docker_image_id" ]];then
-    echo "$(date +%FT%T): pid:$$ launch docker container: ${docker_repository}" >> ${LOG_FILE}
+    log "launch docker container: ${docker_repository}"
     docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
   else
-    echo "$(date +%FT%T): pid:$$ found running docker image: $docker_image_id" >> ${LOG_FILE}
+    log "found running docker image: $docker_image_id"
   fi
   docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
 fi
@@ -197,13 +205,13 @@ if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
 fi
 
 if [[ -n "$docker_ports" ]];then
-  echo "$(date +%FT%T): pid:$$ found public docker ports:${docker_ports}" >> ${LOG_FILE}
+  log "found public docker ports:${docker_ports}"
   if [[ "$docker_port" == "-" ]];then
     public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{print \$2;exit}" <<<"$docker_ports")"
   else
     public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{if (\$3==\"${docker_port}/tcp\"){print \$2}}" <<<"$docker_ports")"
   fi
-  echo "$(date +%FT%T): pid:$$ use public port:${public_port}" >> ${LOG_FILE}
+  log "use public port:${public_port}"
 
   if [[ -n "$public_port" ]];then
     if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
@@ -222,8 +230,7 @@ ${ALL_LINES}${REQUEST_CONTENT}"
       "
     else
       docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
-      echo "$(date +%FT%T): pid:$$ execute request: ${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
-${ALL_LINES}${REQUEST_CONTENT}" >> ${LOG_FILE}
+      log "execute request: ${REQUEST_METHOD} localhost:${public_port}${docker_request_uri}"
       response="$( \
       echo "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
@@ -237,12 +244,12 @@ ${ALL_LINES}${REQUEST_CONTENT}" \
     sed -n '2,$p' <<<"${response}"
     exit 0
   else
-    echo "$(date +%FT%T): pid:$$ no public port found" >> ${LOG_FILE}
+    log "no public port found"
   fi
 else
-  echo "$(date +%FT%T): pid:$$ no docker ports found" >> ${LOG_FILE}
+  log "no docker ports found"
 fi
 
-echo "$(date +%FT%T): pid:$$ default reaction 404" >> ${LOG_FILE}
+log "default reaction 404"
 echo_response_status_line 404 "Not Found"
 
