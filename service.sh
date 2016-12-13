@@ -193,6 +193,7 @@ if [[ -n "$docker_ports" ]];then
 ${ALL_LINES}${REQUEST_CONTENT}" \
     | socat - TCP:localhost:${public_port},shut-none \
     )"
+    log "response from container: $(sed -n '1p' <<<"$response")"
     sed -n '1p' <<<"${response}"
     echo "Docker_Image_Created: ${docker_image_created}"
     echo "Docker_Image_Name: ${docker_image_id}"
