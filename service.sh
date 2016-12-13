@@ -4,6 +4,14 @@ set -ef -o pipefail
 
 function upper() { echo "$@" | tr '[:lower:]' '[:upper:]'; }
 
+function log() {
+  if [[ -n "$LOG_FILE" ]];then
+    echo "$(date +%FT%T) [$$] $@" >>${LOG_FILE}
+  else
+    echo "$(date +%FT%T) [$$] $@" >&2
+  fi
+}
+
 function echo_response_default_headers() { 
   # DATE=$(date +"%a, %d %b %Y %H:%M:%S %Z")
   echo -e "Date: $(date -u "+%a, %d %b %Y %T GMT")\r"
@@ -15,6 +23,7 @@ function echo_response_status_line() {
   local STATUS_CODE STATUS_TEXT
   STATUS_CODE=${1-200}
   STATUS_TEXT=${2-OK}
+  log "response: ${STATUS_CODE} ${STATUS_TEXT}"
   echo -e "HTTP/1.0 ${STATUS_CODE} ${STATUS_TEXT}\r"
 }
 
@@ -52,14 +61,6 @@ function extract_docker_information_from_path() {
   : ${docker_port:="-"}
   : ${docker_version:="latest"}
   echo "$internal_path" "$docker_port" "$docker_version" "$docker_repository" "$docker_request_uri"
-}
-
-function log() {
-  if [[ -n "$LOG_FILE" ]];then
-    echo "$(date +%FT%T) [$$] $@" >>${LOG_FILE}
-  else
-    echo "$(date +%FT%T) [$$] $@" >&2
-  fi
 }
 
 : ${DOCKER_NAMESPACE:="nasoym"}
@@ -193,7 +194,6 @@ if [[ -n "$docker_ports" ]];then
 ${ALL_LINES}${REQUEST_CONTENT}" \
     | socat - TCP:localhost:${public_port},shut-none \
     )"
-    # echo "got response from container: ${response}" >&2
     sed -n '1p' <<<"${response}"
     echo "Docker_Image_Created: ${docker_image_created}"
     echo "Docker_Image_Name: ${docker_image_id}"
