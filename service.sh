@@ -91,14 +91,29 @@ fi
 
 log "${SOCAT_PEERADDR}:${SOCAT_PEERPORT} ${REQUEST_METHOD} ${REQUEST_URI}"
 
+authorization_type="${AUTHORIZATION%% *}"
+authorization_token="${AUTHORIZATION#* }"
+
+if [[ "$no_auth" -ne 1 ]];then
+  shopt -s nocasematch
+  if [[ ! "$authorization_type" =~ ^jwt$ ]];then
+    log "no jwt authorization found"
+    echo_response_status_line 401 "Unauthorized"
+    exit
+  fi
+  if ! ./jwt_verify -f public_jwt_keys >/dev/null <<<"$authorization_token"; then
+    log "jwt signature failed"
+    echo_response_status_line 401 "Unauthorized"
+    exit
+  fi
+fi
+
 read internal_path docker_port docker_version docker_repository docker_request_uri < <(extract_docker_information_from_path "$REQUEST_URI")
 if [[ -z "$docker_repository" && "$internal_path" == "-" ]]; then
   log "no docker_repository or internal_path"
   echo_response_status_line 404 "Not Found"
   exit
 fi
-
-# echo "1::: $internal_path" >&2
 
 if [[ "$internal_path" != "-" ]];then
   echo_response_status_line 200 "Ok"
@@ -151,58 +166,15 @@ if [[ "$internal_path" != "-" ]];then
   exit 0
 fi
 
-authorization_type="${AUTHORIZATION%% *}"
-authorization_token="${AUTHORIZATION#* }"
-
-if [[ "$no_auth" -ne 1 ]];then
-  shopt -s nocasematch
-  if [[ ! "$authorization_type" =~ ^jwt$ ]];then
-    log "no jwt authorization found"
-    echo_response_status_line 401 "Unauthorized"
-    exit
-  fi
-fi
-
-if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
-  echo "REQUEST_URI:$REQUEST_URI"
-  echo "docker_port:$docker_port"
-  echo "docker_version:$docker_version"
-  echo "docker_repository:$docker_repository"
-  echo "docker_request_uri:$docker_request_uri"
-
-  echo "AUTHORIZATION:$AUTHORIZATION"
-  echo "authorization_type:$authorization_type"
-  echo "authorization_token:$authorization_token"
-fi
-
-if [[ "$no_auth" -ne 1 ]];then
-  if [[ $DRY_RUN -ne 1 ]];then
-    if ! ./jwt_verify -f public_jwt_keys >/dev/null <<<"$authorization_token"; then
-      log "jwt signature failed"
-      echo_response_status_line 401 "Unauthorized"
-      exit
-    fi
-  fi
-fi
-
-if [[ $DRY_RUN -eq 1 ]];then
-  docker_image_id="docker_image_id"
-  docker_ports="0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp"
+# docker_ports="0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp"
+docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
+if [[ -z "$docker_image_id" ]];then
+  log "launch docker container: ${docker_repository}"
+  docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
 else
-  docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
-  if [[ -z "$docker_image_id" ]];then
-    log "launch docker container: ${docker_repository}"
-    docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
-  else
-    log "found running docker image: $docker_image_id"
-  fi
-  docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
+  log "found running docker image: $docker_image_id"
 fi
-
-if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
-  echo "docker_image_id:$docker_image_id"
-  echo "docker_ports:$docker_ports"
-fi
+docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
 
 if [[ -n "$docker_ports" ]];then
   log "found public docker ports:${docker_ports}"
@@ -214,29 +186,13 @@ if [[ -n "$docker_ports" ]];then
   log "use public port:${public_port}"
 
   if [[ -n "$public_port" ]];then
-    if [[ $DRY_RUN -eq 1 || $DEBUG -eq 1 ]];then
-      echo "public_port:$public_port"
-
-      echo "execute request:"
-      echo -n "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
-${ALL_LINES}${REQUEST_CONTENT}"
-
-    fi
-    if [[ $DRY_RUN -eq 1 ]];then
-      response="response
-1
-2
-3
-      "
-    else
-      docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
-      log "execute request: ${REQUEST_METHOD} localhost:${public_port}${docker_request_uri}"
-      response="$( \
-      echo "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
+    docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
+    log "execute request: ${REQUEST_METHOD} localhost:${public_port}${docker_request_uri}"
+    response="$( \
+    echo "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
 ${ALL_LINES}${REQUEST_CONTENT}" \
-      | socat - TCP:localhost:${public_port},shut-none \
-      )"
-    fi
+    | socat - TCP:localhost:${public_port},shut-none \
+    )"
     # echo "got response from container: ${response}" >&2
     sed -n '1p' <<<"${response}"
     echo "Docker_Image_Created: ${docker_image_created}"
