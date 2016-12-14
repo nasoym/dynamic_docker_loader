@@ -6,28 +6,13 @@ function parse_headers() {
   local HEADER_KEY HEADER_VALUE HEADER_LINE
   while read -r HEADER_LINE; do 
     HEADER_LINE="$(echo "$HEADER_LINE" | tr -d '\r')"
-    echo "$HEADER_LINE" >&2
     [[ "$HEADER_LINE" =~ ^$ ]]&& { 
-      echo "found empty line" >&2
       break; 
     } 
     HEADER_KEY="${HEADER_LINE/%: */}"
-    echo "$HEADER_KEY" >&2
     HEADER_KEY="$(upper ${HEADER_KEY//-/_} )"
     HEADER_VALUE="${HEADER_LINE/#*: /}"
-    echo "$HEADER_VALUE" >&2
-    declare -x "REQUEST_HEADER_${HEADER_KEY}"="$HEADER_VALUE"
+    declare -g -x "REQUEST_HEADER_${HEADER_KEY}"="$HEADER_VALUE"
   done
-  # unset HEADER_KEY HEADER_VALUE HEADER_LINE
-  echo "==========="
-  echo "REQUEST_HEADER_A:${REQUEST_HEADER_A}"
-  echo "REQUEST_HEADER_C:${REQUEST_HEADER_C}"
-  # env | grep -i request
-  echo "==========="
-  echo "done" >&2
-  export REQUEST_HEADER_A
-  export REQUEST_HEADER_C
 }
-
-export -f parse_headers
 

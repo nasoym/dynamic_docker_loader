@@ -2,13 +2,21 @@
 
 set -e
 
+. $(dirname $0)/assert.sh/assert.sh
 . $(dirname $0)/parse_headers
 
 parse_headers <<<"A: B
 C: D
 
 "
-echo "REQUEST_HEADER_A:${REQUEST_HEADER_A}"
-echo "REQUEST_HEADER_C:${REQUEST_HEADER_C}"
-# env | grep -i request
+assert "echo \$REQUEST_HEADER_A" "B"
+assert "echo \$REQUEST_HEADER_C" "D"
+assert "echo \$HEADER_KEY" ""
+assert "echo \$HEADER_VALUE" ""
+assert "echo \$HEADER_LINE" ""
+
+parse_headers <<<"A: 1"
+assert "echo \$REQUEST_HEADER_A" "1"
+
+assert_end tests
 
