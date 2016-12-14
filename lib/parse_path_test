@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -e
+
+. $(dirname $0)/assert.sh/assert.sh
+. $(dirname $0)/parse_path
+
+function main() {
+  extract_docker_information_from_path $@
+}
+
+assert "main" "- - latest  "
+assert "main /8080/0.0.1/repo/rest" "- 8080 0.0.1 repo /rest"
+assert "main /8080/repo/rest" "- 8080 latest repo /rest"
+assert "main /0.0.1/repo/rest" "- - 0.0.1 repo /rest"
+assert "main /repo/rest" "- - latest repo /rest"
+assert "main /repo/" "- - latest repo /"
+assert "main /logs" "logs - latest  "
+assert "main /8080/0.0.1/repo" "- - latest - /repo"
+
+assert_end tests
+

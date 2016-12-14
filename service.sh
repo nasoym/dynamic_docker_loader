@@ -2,6 +2,8 @@
 
 set -ef -o pipefail
 
+source lib/parse_path
+
 function upper() { echo "$@" | tr '[:lower:]' '[:upper:]'; }
 
 function log() {
@@ -25,41 +27,6 @@ function echo_response_status_line() {
   STATUS_TEXT=${2-OK}
   log "response: ${STATUS_CODE} ${STATUS_TEXT}"
   echo -e "HTTP/1.0 ${STATUS_CODE} ${STATUS_TEXT}\r"
-}
-
-function extract_docker_information_from_path() {
-  local docker_port docker_version docker_repository docker_request_uri internal_path
-  docker_repository=""
-  if [[ "$1" =~ ^/([0-9]+)/([0-9]+\.[0-9]+\.[0-9]+)/([^/]+)(/.*)$ ]];then
-    docker_port="${BASH_REMATCH[1]}"
-    docker_version="${BASH_REMATCH[2]}"
-    docker_repository="${BASH_REMATCH[3]}"
-    docker_request_uri="${BASH_REMATCH[4]}"
-  elif [[ "$1" =~ ^/([0-9]+)/([^/]+)(/.*)$ ]];then
-    docker_port="${BASH_REMATCH[1]}"
-    docker_repository="${BASH_REMATCH[2]}"
-    docker_request_uri="${BASH_REMATCH[3]}"
-    if [[ "$docker_repository" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]];then
-      docker_port="-"
-      docker_repository="-"
-    fi
-  elif [[ "$1" =~ ^/([0-9]+\.[0-9]+\.[0-9]+)/([^/]+)(/.*)$ ]];then
-    docker_version="${BASH_REMATCH[1]}"
-    docker_repository="${BASH_REMATCH[2]}"
-    docker_request_uri="${BASH_REMATCH[3]}"
-  elif [[ "$1" =~ ^/([^/]+)(/.*)$ ]];then
-    docker_repository="${BASH_REMATCH[1]}"
-    docker_request_uri="${BASH_REMATCH[2]}"
-  elif [[ "$1" =~ ^/([^/]+)$ ]];then
-    # docker_repository=""
-    internal_path="${BASH_REMATCH[1]}"
-  else
-    docker_repository=""
-  fi
-  : ${internal_path:="-"}
-  : ${docker_port:="-"}
-  : ${docker_version:="latest"}
-  echo "$internal_path" "$docker_port" "$docker_version" "$docker_repository" "$docker_request_uri"
 }
 
 : ${DOCKER_NAMESPACE:="nasoym"}
