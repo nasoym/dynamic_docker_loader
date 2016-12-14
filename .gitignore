@@ -1,3 +1,4 @@
 certificate/
 public_jwt_keys/
 logs/
+lib/assert.sh/.git/
