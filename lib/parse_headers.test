@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -e
+
+. $(dirname $0)/parse_headers
+
+parse_headers <<<"A: B
+C: D
+
+"
+echo "REQUEST_HEADER_A:${REQUEST_HEADER_A}"
+echo "REQUEST_HEADER_C:${REQUEST_HEADER_C}"
+# env | grep -i request
+
