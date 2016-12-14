@@ -138,6 +138,7 @@ docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/$
 if [[ -z "$docker_image_id" ]];then
   log "launch docker container: ${docker_repository}"
   docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
+  sleep 0.5
 else
   log "found running docker image: $docker_image_id"
 fi
