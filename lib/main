@@ -65,7 +65,7 @@ function main() {
 ${ALL_LINES}${REQUEST_CONTENT}" | docker_handle_request "$docker_repository" "$docker_version" "$docker_port" )"
   docker_return_code="$?"
 
-  log "docker response: $response"
+  log "docker response: $( sed -n 1p <<<"$response")"
   log "docker return code: $docker_return_code"
   if [[ -n "$response" ]];then
     echo "$response"
