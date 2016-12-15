@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+function docker_remove_all_containers() {
+  docker_container_id="$(docker ps -a --format "{{.ID}}" || true)"
+  echo "docker_container_id:${docker_container_id}"
+  for container_id in $docker_container_id; do
+    echo "remove container: ${container_id}"
+    docker rm -f ${container_id}
+  done
+}
+
+if [[ ${BASH_SOURCE[0]} != $0 ]]; then
+  export -f main
+else
+  main "${@}"
+  exit $?
+fi
