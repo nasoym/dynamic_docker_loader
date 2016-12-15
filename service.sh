@@ -6,13 +6,15 @@ source lib/logger
 source lib/http_helpers
 source lib/parse_path
 source lib/internal_commands
-source lib/docker
-source lib/docker_request
+# source lib/docker
+# source lib/docker_request
+source lib/docker_mock
+source lib/docker_request_mock
 
 function upper() { echo "$@" | tr '[:lower:]' '[:upper:]'; }
 
 : ${DOCKER_NAMESPACE:="nasoym"}
-: ${LOG_FILE:="logs/logs"}
+# : ${LOG_FILE:="logs/logs"}
 
 read -r REQUEST_METHOD REQUEST_URI REQUEST_HTTP_VERSION
 
@@ -72,8 +74,16 @@ if [[ "$internal_path" != "-" ]];then
   exit 0
 fi
 
-echo "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
-${ALL_LINES}${REQUEST_CONTENT}" | docker_handle_request "$docker_repository" "$docker_version" "$docker_port"
+response="$( echo "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
+${ALL_LINES}${REQUEST_CONTENT}" | docker_handle_request "$docker_repository" "$docker_version" "$docker_port" )"
+docker_return_code="$?"
+
+log "docker response: $response"
+log "docker return code: $docker_return_code"
+if [[ -n "$response" ]];then
+  echo "$response"
+  exit 0
+fi
 
 log "default reaction 404"
 echo_response_status_line 404 "Not Found"
