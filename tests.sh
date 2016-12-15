@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -ef -o pipefail
-set -x
+# set -x
 
 ./tests/parse_path.test
 ./tests/parse_headers.test

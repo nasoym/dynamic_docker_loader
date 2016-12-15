@@ -6,6 +6,7 @@ set -f -o pipefail
 source tests/lib/logger_silent
 source lib/http_helpers
 source lib/parse_path
+source lib/parse_request
 source lib/internal_commands
 # source lib/docker
 source tests/lib/docker_mock
@@ -20,6 +21,8 @@ source tests/lib/assert.sh/assert.sh
 no_auth=1
 assert "echo -e \"GET /9090/0.0.1/foo/bar/bla HTTP/1.1\n\" | main" "HTTP/1.0 200 Ok\nResponseHeader: Value\n\nfoo 0.0.1 9090\nGET /bar/bla HTTP/1.1"
 assert 'echo -e "GET /foo/bar HTTP/1.1\n" | main' "HTTP/1.0 200 Ok\nResponseHeader: Value\n\nfoo latest -\nGET /bar HTTP/1.1"
+assert 'echo -e "PUT /foo/bar HTTP/1.1\nContent-Length: 5\n\n12345" | main' "HTTP/1.0 200 Ok\nResponseHeader: Value\n\nfoo latest -\nPUT /bar HTTP/1.1\nContent-Length: 5\n\n12345"
+assert 'echo -e "PUT /foo/bar HTTP/1.1\nContent-Length: 5\n\n12345zzz" | main' "HTTP/1.0 200 Ok\nResponseHeader: Value\n\nfoo latest -\nPUT /bar HTTP/1.1\nContent-Length: 5\n\n12345"
 
 no_auth=0
 assert 'echo -e "GET /foo/bar HTTP/1.1\n" | main | tr -d "\r"' "HTTP/1.0 401 Unauthorized"

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+function parse_request() {
+  read -r request_method request_uri request_http_version
+
+  request_header_lines=""
+  while read -r line; do 
+    line="$(echo "$line" | tr -d '\r')"
+    request_header_lines+="$line
+"
+    [[ "$line" =~ ^$ ]] && { break; } 
+  done
+ 
+  content_length="$(sed -e '/^content-length:/I!d' -e 's/^content-length: \([0-9]\+\)$/\1/gI' <<<"$request_header_lines")"
+  if [[ -n "$content_length" ]] && [[ "$content_length" -gt "0" ]];then
+    read -r -d '' -n "$content_length" request_content
+  fi
+}
+

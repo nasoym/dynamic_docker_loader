@@ -8,20 +8,13 @@ function docker_handle_request() {
   request="$(cat)"
 
   log "${BASH_SOURCE[0]}: execute request: $docker_repository $docker_version $docker_port"
-  log "${BASH_SOURCE[0]}: execute request: $request"
 
   echo "HTTP/1.0 200 Ok"
   echo "ResponseHeader: Value"
   echo
   echo "$docker_repository $docker_version $docker_port"
   echo "$request"
-  # sed -n 1p <<<"$request"
   exit 0
 }
+export -f docker_handle_request
 
-if [[ ${BASH_SOURCE[0]} != $0 ]]; then
-  export -f docker_handle_request
-else
-  main "${@}"
-  exit $?
-fi

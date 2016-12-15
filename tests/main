@@ -6,6 +6,7 @@ set -f -o pipefail
 source tests/lib/logger_silent
 source lib/http_helpers
 source lib/parse_path
+source lib/parse_request
 source lib/internal_commands
 # source lib/docker
 source tests/lib/docker_mock
