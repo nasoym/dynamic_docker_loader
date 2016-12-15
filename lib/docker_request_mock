@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+function docker_handle_request() {
+  local docker_image_id docker_ports public_port docker_image_created request response
+  docker_repository="$1"
+  docker_version="$2"
+  docker_port="$3"
+  request="$(cat)"
+
+  log "${BASH_SOURCE[0]}: execute request: $docker_repository $docker_version $docker_port"
+  log "${BASH_SOURCE[0]}: execute request: $request"
+
+  echo "HTTP/1.0 200 Ok"
+  echo
+  echo "$docker_repository $docker_version $docker_port"
+  echo "$request"
+  # sed -n 1p <<<"$request"
+  exit 0
+}
+
+if [[ ${BASH_SOURCE[0]} != $0 ]]; then
+  export -f docker_handle_request
+else
+  main "${@}"
+  exit $?
+fi

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+function docker_remove_all_containers() {
+  log "docker_remove_all_containers"
+}
+
+function docker_stop_all_containers() {
+  log "docker_stop_all_containers"
+}
+
+function docker_update_all_containers() {
+  log "docker_update_all_containers"
+}
+
+function docker_list_outdated() {
+  log "docker_list_outdated"
+  echo "foo
+bar"
+}
+
+if [[ ${BASH_SOURCE[0]} != $0 ]]; then
+  export -f docker_remove_all_containers
+  export -f docker_stop_all_containers
+  export -f docker_update_all_containers
+  export -f docker_list_outdated
+else
+  main "${@}"
+  exit $?
+fi
