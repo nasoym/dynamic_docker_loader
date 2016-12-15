@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -ef -o pipefail
-
 function handle_internal_command() {
   local internal_path="$1"
   if [[ "$internal_path" == "update" ]];then

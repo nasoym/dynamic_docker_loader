@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -ef -o pipefail
-
 function docker_handle_request() {
   local docker_image_id docker_ports public_port docker_image_created response
   docker_repository="$1"

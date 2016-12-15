@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -ef -o pipefail
-
 function echo_response_default_headers() { 
   # DATE=$(date +"%a, %d %b %Y %H:%M:%S %Z")
   echo -e "Date: $(date -u "+%a, %d %b %Y %T GMT")\r"

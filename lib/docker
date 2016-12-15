@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -ef -o pipefail
-
 function docker_remove_all_containers() {
   docker_container_id="$(docker ps -a --format "{{.ID}}" || true)"
   echo "docker_container_id:${docker_container_id}"

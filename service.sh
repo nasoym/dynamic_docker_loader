@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ef -o pipefail
+set -f -o pipefail
 
 source lib/logger
 source lib/http_helpers
