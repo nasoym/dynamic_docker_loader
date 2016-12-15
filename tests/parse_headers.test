@@ -2,8 +2,8 @@
 
 set -e
 
-. $(dirname $0)/assert.sh/assert.sh
-. $(dirname $0)/parse_headers
+source lib/parse_headers
+source tests/lib/assert.sh/assert.sh
 
 parse_headers <<<"A: B
 C: D

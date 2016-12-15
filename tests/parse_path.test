@@ -2,8 +2,8 @@
 
 set -e
 
-. $(dirname $0)/assert.sh/assert.sh
-. $(dirname $0)/parse_path
+source lib/parse_path
+source tests/lib/assert.sh/assert.sh
 
 function main() {
   extract_docker_information_from_path $@
