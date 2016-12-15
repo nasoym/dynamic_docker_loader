@@ -3,5 +3,4 @@
 function log() {
   :
 }
-export -f log
 

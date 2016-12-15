@@ -16,5 +16,4 @@ function docker_handle_request() {
   echo "$request"
   exit 0
 }
-export -f docker_handle_request
 
