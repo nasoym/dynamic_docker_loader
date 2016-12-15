@@ -15,10 +15,9 @@ function echo_response_status_line() {
   echo -e "HTTP/1.0 ${STATUS_CODE} ${STATUS_TEXT}\r"
 }
 
-if [[ ${BASH_SOURCE[0]} != $0 ]]; then
-  export -f echo_response_default_headers
-  export -f echo_response_status_line
-else
-  main "${@}"
-  exit $?
-fi
+function get_header_value() { 
+  header_key="$1"
+  sed -e "/^${header_key}/I!d" \
+      -e "s/^${header_key}: \(.*\)\$/\1/gi"
+}
+

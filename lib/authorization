@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+function authorization_verify() {
+  local authorization authorization_type authorization_token
+  authorization="$1"
+  authorization_type="${authorization%% *}"
+  authorization_token="${authorization#* }"
+  shopt -s nocasematch
+  if [[ ! "$authorization_type" =~ ^jwt$ ]];then
+    log "no jwt authorization found"
+    echo_response_status_line 401 "Unauthorized"
+    exit
+  fi
+  if ! ./lib/jwt_verify -f public_jwt_keys >/dev/null <<<"$authorization_token"; then
+    log "jwt signature failed"
+    echo_response_status_line 401 "Unauthorized"
+    exit
+  fi
+}
+

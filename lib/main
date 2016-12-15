@@ -2,6 +2,7 @@
 
 function main() {
   parse_request
+
   read \
     internal_path \
     docker_port \
@@ -12,22 +13,8 @@ function main() {
 
   log "${SOCAT_PEERADDR}:${SOCAT_PEERPORT} ${request_method} ${request_uri}"
 
-  if [[ "$no_auth" -ne 1 ]];then
-    authorization="$(sed -e '/^authorization/I!d' -e 's/^authorization: \(.*\)$/\1/gi' <<<"$request_header_lines")"
-    authorization_type="${authorization%% *}"
-    authorization_token="${authorization#* }"
-    shopt -s nocasematch
-    if [[ ! "$authorization_type" =~ ^jwt$ ]];then
-      log "no jwt authorization found"
-      echo_response_status_line 401 "Unauthorized"
-      exit
-    fi
-    if ! ./lib/jwt_verify -f public_jwt_keys >/dev/null <<<"$authorization_token"; then
-      log "jwt signature failed"
-      echo_response_status_line 401 "Unauthorized"
-      exit
-    fi
-  fi
+  authorization="$(get_header_value "authorization" <<<"$request_header_lines")"
+  [[ "$no_auth" -ne 1 ]] && { authorization_verify "$authorization"; }
 
   if [[ "$internal_path" != "-" ]];then
     log "handle internal_path:${internal_path}"
@@ -52,11 +39,4 @@ function main() {
     echo_response_status_line 404 "Not Found"
   fi
 }
-
-if [[ ${BASH_SOURCE[0]} != $0 ]]; then
-  export -f main
-else
-  main "${@}"
-  exit $?
-fi
 

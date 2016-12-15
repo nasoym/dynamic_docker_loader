@@ -8,9 +8,5 @@ function log() {
   fi
 }
 
-if [[ ${BASH_SOURCE[0]} != $0 ]]; then
-  export -f log
-else
-  main "${@}"
-  exit $?
-fi
+# TODO check existence of log file, and create directory
+

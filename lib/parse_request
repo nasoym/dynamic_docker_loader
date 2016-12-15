@@ -11,7 +11,7 @@ function parse_request() {
     [[ "$line" =~ ^$ ]] && { break; } 
   done
  
-  content_length="$(sed -e '/^content-length:/I!d' -e 's/^content-length: \([0-9]\+\)$/\1/gI' <<<"$request_header_lines")"
+  content_length="$(get_header_value "content-length" <<<"$request_header_lines")"
   if [[ -n "$content_length" ]] && [[ "$content_length" -gt "0" ]];then
     read -r -d '' -n "$content_length" request_content
   fi

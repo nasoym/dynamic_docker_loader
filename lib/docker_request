@@ -47,10 +47,3 @@ function docker_handle_request() {
   fi
 }
 
-
-if [[ ${BASH_SOURCE[0]} != $0 ]]; then
-  export -f docker_handle_request
-else
-  main "${@}"
-  exit $?
-fi
