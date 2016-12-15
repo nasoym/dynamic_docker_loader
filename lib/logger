@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -ef -o pipefail
+
+function log() {
+  if [[ -n "$LOG_FILE" ]];then
+    echo "$(date +%FT%T) [$$] $@" >>${LOG_FILE}
+  else
+    echo "$(date +%FT%T) [$$] $@" >&2
+  fi
+}
+
+if [[ ${BASH_SOURCE[0]} != $0 ]]; then
+  export -f log
+else
+  main "${@}"
+  exit $?
+fi

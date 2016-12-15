@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+set -ef -o pipefail
+
+function echo_response_default_headers() { 
+  # DATE=$(date +"%a, %d %b %Y %H:%M:%S %Z")
+  echo -e "Date: $(date -u "+%a, %d %b %Y %T GMT")\r"
+  echo -e "Expires: $(date -u "+%a, %d %b %Y %T GMT")\r"
+  echo -e "Connection: close\r"
+}
+
+function echo_response_status_line() { 
+  local STATUS_CODE STATUS_TEXT
+  STATUS_CODE=${1-200}
+  STATUS_TEXT=${2-OK}
+  log "response: ${STATUS_CODE} ${STATUS_TEXT}"
+  echo -e "HTTP/1.0 ${STATUS_CODE} ${STATUS_TEXT}\r"
+}
+
+if [[ ${BASH_SOURCE[0]} != $0 ]]; then
+  export -f echo_response_default_headers
+  export -f echo_response_status_line
+else
+  main "${@}"
+  exit $?
+fi

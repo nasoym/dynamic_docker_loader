@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -ef -o pipefail
+
+function handle_internal_command() {
+  local internal_path="$1"
+  if [[ "$internal_path" == "update" ]];then
+    echo "update"
+    docker_update_all_containers
+
+  elif [[ "$internal_path" == "remove" ]];then
+    echo "remove all containers"
+    docker_remove_all_containers
+
+  elif [[ "$internal_path" == "stop" ]];then
+    echo "stop all containers"
+    docker_stop_all_containers
+
+  elif [[ "$internal_path" == "logs" ]];then
+    echo "logs"
+    if [[ -r ${LOG_FILE} ]]; then
+      cat ${LOG_FILE}
+    fi
+  fi
+}
+
+if [[ ${BASH_SOURCE[0]} != $0 ]]; then
+  export -f handle_internal_command
+else
+  main "${@}"
+  exit $?
+fi

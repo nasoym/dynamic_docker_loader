@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+set -ef -o pipefail
+
+function docker_handle_request() {
+  local docker_image_id docker_ports public_port docker_image_created response
+  docker_repository="$1"
+  docker_version="$2"
+  docker_port="$3"
+  request="$(cat)"
+
+  # docker_ports="0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp"
+  docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
+  if [[ -z "$docker_image_id" ]];then
+    log "launch docker container: ${docker_repository}"
+    docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
+    sleep 0.5
+  else
+    log "found running docker image: $docker_image_id"
+  fi
+  docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
+
+  if [[ -n "$docker_ports" ]];then
+    log "found public docker ports:${docker_ports}"
+    if [[ "$docker_port" == "-" ]];then
+      public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{print \$2;exit}" <<<"$docker_ports")"
+    else
+      public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{if (\$3==\"${docker_port}/tcp\"){print \$2}}" <<<"$docker_ports")"
+    fi
+    log "use public port:${public_port}"
+
+    if [[ -n "$public_port" ]];then
+      docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
+      # log "execute request: ${REQUEST_METHOD} localhost:${public_port}${docker_request_uri}"
+      response="$( \
+      echo "${request}" | socat - TCP:localhost:${public_port},shut-none \
+      )"
+      log "response from container: $(sed -n '1p' <<<"$response")"
+      sed -n '1p' <<<"${response}"
+      echo "Docker_Image_Created: ${docker_image_created}"
+      echo "Docker_Image_Name: ${docker_image_id}"
+      sed -n '2,$p' <<<"${response}"
+      exit 0
+    else
+      log "no public port found"
+    fi
+  else
+    log "no docker ports found"
+  fi
+}
+
+
+if [[ ${BASH_SOURCE[0]} != $0 ]]; then
+  export -f docker_handle_request
+else
+  main "${@}"
+  exit $?
+fi
