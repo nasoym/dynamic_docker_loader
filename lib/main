@@ -9,7 +9,7 @@ function main() {
   while read -r HEADER_LINE; do 
     HEADER_LINE="$(echo "$HEADER_LINE" | tr -d '\r')"
     ALL_LINES+="$HEADER_LINE
-  "
+"
     [[ "$HEADER_LINE" =~ ^$ ]] && { break; } 
     HEADER_KEY="${HEADER_LINE/%: */}"
     HEADER_KEY="$(upper ${HEADER_KEY//-/_} )"
@@ -62,7 +62,7 @@ function main() {
   fi
 
   response="$( echo "${REQUEST_METHOD} ${docker_request_uri} ${REQUEST_HTTP_VERSION}
-  ${ALL_LINES}${REQUEST_CONTENT}" | docker_handle_request "$docker_repository" "$docker_version" "$docker_port" )"
+${ALL_LINES}${REQUEST_CONTENT}" | docker_handle_request "$docker_repository" "$docker_version" "$docker_port" )"
   docker_return_code="$?"
 
   log "docker response: $response"
