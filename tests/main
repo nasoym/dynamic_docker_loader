@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -f -o pipefail
+
+# source lib/logger
+source tests/lib/logger_silent
+source lib/http_helpers
+source lib/parse_path
+source lib/internal_commands
+# source lib/docker
+source tests/lib/docker_mock
+# source lib/docker_request
+source tests/lib/docker_request_mock
+source lib/main
+
+: ${DOCKER_NAMESPACE:="nasoym"}
+
+main
+
