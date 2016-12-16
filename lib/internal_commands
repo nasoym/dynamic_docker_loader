@@ -10,6 +10,10 @@ function handle_internal_command() {
     echo "remove all containers"
     docker_remove_all_containers
 
+  elif [[ "$internal_path" == "clearold" ]];then
+    echo "remove old containers"
+    docker_remove_old_containers
+
   elif [[ "$internal_path" == "logs" ]];then
     echo "logs"
     if [[ -r ${LOG_FILE} ]]; then

@@ -9,6 +9,11 @@ function docker_remove_all_containers() {
   done
 }
 
+function docker_remove_old_containers() {
+  # sudo lsof -n -iTCP@127.0.0.1:32836 -sTCP:ESTABLISHED
+  :
+}
+
 function docker_update_all_containers() {
   images_to_update="$(max_time_diff=120 docker_list_outdated)"
   echo "images_to_update:$images_to_update"
@@ -27,6 +32,8 @@ function docker_update_all_containers() {
       docker run --detach --publish-all --label "${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --label="dds" ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
     fi
   done
+
+
 }
 
 function docker_list_outdated() {
