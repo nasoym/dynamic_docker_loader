@@ -37,7 +37,7 @@ function docker_handle_request() {
           break
         fi
         log "response was empty retry in 0.1 seconds"
-        sleep 0.1
+        sleep 0.2
       done
       log "response from container: $(sed -n '1p' <<<"$response")"
       sed -n '1p' <<<"${response}"
