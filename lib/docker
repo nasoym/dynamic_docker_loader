@@ -24,17 +24,16 @@ function docker_update_all_containers() {
 
   DOCKER_NAMESPACE="nasoym"
   for docker_repository in $images_to_update; do
-    echo ">>>$docker_repository"
-    docker_container_id="$(docker ps -f ancestor=${DOCKER_NAMESPACE}/${docker_repository} --format "{{.ID}}" || true)"
-    echo "active docker_container_id:${docker_container_id}"
-    for container_id in $docker_container_id; do
-      echo "remove container: ${container_id}"
-      docker rm -f ${container_id}
-    done
+    # what is with version
+    echo "pull ${DOCKER_NAMESPACE}/$docker_repository"
     docker pull ${DOCKER_NAMESPACE}/$docker_repository
+    docker_version="latest"
+    docker_container_id="$(docker ps --filter status=running --filter label=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.ID}}" || true)"
+    echo "active docker_container_id based on repo image:${docker_container_id}"
+    echo "relaunch container to have new version available"
+    # what is with version
+    docker run --detach --publish-all --label "${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
   done
-  # echo "$images_to_update" | parallel 'docker pull nasoym/{}'
-  # docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
 }
 
 function docker_list_outdated() {
