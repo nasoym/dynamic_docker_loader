@@ -19,7 +19,7 @@ function docker_update_all_containers() {
     echo "pull ${DOCKER_NAMESPACE}/$docker_repository"
     docker pull ${DOCKER_NAMESPACE}/$docker_repository
     docker_version="latest"
-    docker_container_id="$(docker ps --filter status=running --filter label=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --label="dds" --format "{{.ID}}" || true)"
+    docker_container_id="$(docker ps --filter status=running --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --filter label="dds" --format "{{.ID}}" || true)"
     echo "active docker_container_id based on repo image:${docker_container_id}"
     # what is with version
     if [[ -n "$docker_container_id" ]];then
