@@ -1,20 +1,11 @@
 #!/usr/bin/env bash
 
 function docker_remove_all_containers() {
-  docker_container_id="$(docker ps -a --format "{{.ID}}" || true)"
+  docker_container_id="$(docker ps --all --filter label="dds" --format "{{.ID}}" || true)"
   echo "docker_container_id:${docker_container_id}"
   for container_id in $docker_container_id; do
     echo "remove container: ${container_id}"
-    docker rm -f ${container_id}
-  done
-}
-
-function docker_stop_all_containers() {
-  docker_container_id="$(docker ps -f status=running --format "{{.ID}}" || true)"
-  echo "docker_container_id:${docker_container_id}"
-  for container_id in $docker_container_id; do
-    echo "stop container: ${container_id}"
-    docker stop ${container_id}
+    docker rm --force ${container_id}
   done
 }
 
@@ -28,16 +19,18 @@ function docker_update_all_containers() {
     echo "pull ${DOCKER_NAMESPACE}/$docker_repository"
     docker pull ${DOCKER_NAMESPACE}/$docker_repository
     docker_version="latest"
-    docker_container_id="$(docker ps --filter status=running --filter label=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.ID}}" || true)"
+    docker_container_id="$(docker ps --filter status=running --filter label=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --label="dds" --format "{{.ID}}" || true)"
     echo "active docker_container_id based on repo image:${docker_container_id}"
-    echo "relaunch container to have new version available"
     # what is with version
-    docker run --detach --publish-all --label "${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
+    if [[ -n "$docker_container_id" ]];then
+      echo "relaunch container to have new version available"
+      docker run --detach --publish-all --label "${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --label="dds" ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
+    fi
   done
 }
 
 function docker_list_outdated() {
-  dockerhub_list="$(curl -s "https://hub.docker.com/v2/repositories/nasoym/?page=1&page_size=10000")"
+  dockerhub_list="$(curl --silent "https://hub.docker.com/v2/repositories/nasoym/?page=1&page_size=10000")"
 
   remote_dockers="$(echo "$dockerhub_list" \
     | jq -c '.results|map({name,last_updated})[]' \

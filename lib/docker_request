@@ -7,26 +7,14 @@ function docker_handle_request() {
   docker_port="$3"
   request="$(cat)"
 
-  # docker_ports="0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp"
-  # [ec2-user@ip-172-31-27-34 dynamic_docker_loader]$ docker ps -l -f status=running -f ancestor=nasoym/bash_socat_server:1.0.1 --format "{{.Image}} {{.ID}} {{.CreatedAt}} {{.Ports}}"
-  # [ec2-user@ip-172-31-27-34 dynamic_docker_loader]$ docker ps -l -f status=running -f ancestor=nginx --format "{{.Ports}} {{.ID}}"
-  # 727  docker pull nasoym/testtest
-  # 728  docker ps -l -f status=running -f label="nasoym/testtest:latest" --format "{{.Ports}} {{.ID}}"
-  # 729  docker run -d -P --label "nasoym/testtest:latest" nasoym/testtest
-  # 730  docker ps -l -f status=running -f label="nasoym/testtest:latest" --format "{{.Ports}} {{.ID}}"
-  # 731  docker ps -f status=running -f label="nasoym/testtest:latest" --format "{{.Ports}} {{.ID}}"
-  # 732  docker pull --help
-
-  # docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
-  docker_id="$(docker ps --latest --filter status=running --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.ID}}" || true)"
+  docker_id="$(docker ps --latest --filter status=running --filter label="dds" --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.ID}}" || true)"
   if [[ -z "$docker_id" ]];then
     log "launch docker container: ${docker_repository}"
-    docker run --detach --publish-all --label "${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
+    docker run --detach --publish-all --label="dds" --label "${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
   else
     log "found running docker image: $docker_id"
   fi
-  # docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
-  docker_ports="$(docker ps --latest --filter status=running --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.Ports}}" || true)"
+  docker_ports="$(docker ps --latest --filter status=running --filter label="dds" --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.Ports}}" || true)"
 
   if [[ -n "$docker_ports" ]];then
     log "found public docker ports:${docker_ports}"

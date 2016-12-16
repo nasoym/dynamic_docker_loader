@@ -10,10 +10,6 @@ function handle_internal_command() {
     echo "remove all containers"
     docker_remove_all_containers
 
-  elif [[ "$internal_path" == "stop" ]];then
-    echo "stop all containers"
-    docker_stop_all_containers
-
   elif [[ "$internal_path" == "logs" ]];then
     echo "logs"
     if [[ -r ${LOG_FILE} ]]; then
