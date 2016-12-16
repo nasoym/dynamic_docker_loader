@@ -19,7 +19,7 @@ function docker_stop_all_containers() {
 }
 
 function docker_update_all_containers() {
-  images_to_update="$(max_time_diff=120 ./dockerhub_list)"
+  images_to_update="$(max_time_diff=120 docker_list_outdated)"
   echo "images_to_update:$images_to_update"
 
   DOCKER_NAMESPACE="nasoym"
@@ -45,12 +45,13 @@ function docker_list_outdated() {
     | jq -c '.last_updated=(.last_updated|gsub("\\.[0-9]*Z$";"")|strptime("%Y-%m-%dT%H:%M:%S")|mktime)'
   )"
 
-  local_dockers="$(docker images nasoym/* --format "{{.Repository}}:{{.Tag}} {{.CreatedAt}}" \
+  local_dockers="$(docker images --format "{{.Repository}}:{{.Tag}} {{.CreatedAt}}" nasoym/*\
     | sort  \
     | sed \
       -e 's/ CET$//g' \
       -e 's/ CEST$//g' \
-      -e 's/^\([^ ]*\) \(.*\)$/echo "\1 $(gdate -d "\2" +%s)"/ge' \
+      -e 's/ UTC$//g' \
+      -e 's/^\([^ ]*\) \(.*\)$/echo "\1 $(date -d "\2" +%s)"/ge' \
     | awk '{a[$1]=$2} END { for(i in a){ print i, a[i]} }' \
     | sort \
     | awk -F ' |:' '{a[$1]=$3} END {for(i in a){print i,a[i]}}' \
