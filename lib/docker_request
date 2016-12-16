@@ -28,7 +28,7 @@ function docker_handle_request() {
     if [[ -n "$public_port" ]];then
       docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
 
-      for i in {1..10}; do 
+      for i in {1..50}; do 
         log "execute request: localhost:${public_port}${docker_request_uri}"
         response="$( \
           echo -e "${request}\n" | socat - TCP:localhost:${public_port},shut-none \
