@@ -8,15 +8,25 @@ function docker_handle_request() {
   request="$(cat)"
 
   # docker_ports="0.0.0.0:32772->80/tcp, 0.0.0.0:32771->443/tcp"
-  docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
-  if [[ -z "$docker_image_id" ]];then
+  # [ec2-user@ip-172-31-27-34 dynamic_docker_loader]$ docker ps -l -f status=running -f ancestor=nasoym/bash_socat_server:1.0.1 --format "{{.Image}} {{.ID}} {{.CreatedAt}} {{.Ports}}"
+  # [ec2-user@ip-172-31-27-34 dynamic_docker_loader]$ docker ps -l -f status=running -f ancestor=nginx --format "{{.Ports}} {{.ID}}"
+  # 727  docker pull nasoym/testtest
+  # 728  docker ps -l -f status=running -f label="nasoym/testtest:latest" --format "{{.Ports}} {{.ID}}"
+  # 729  docker run -d -P --label "nasoym/testtest:latest" nasoym/testtest
+  # 730  docker ps -l -f status=running -f label="nasoym/testtest:latest" --format "{{.Ports}} {{.ID}}"
+  # 731  docker ps -f status=running -f label="nasoym/testtest:latest" --format "{{.Ports}} {{.ID}}"
+  # 732  docker pull --help
+
+  # docker_image_id="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Image}}" || true)"
+  docker_id="$(docker ps --latest --filter status=running --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.ID}}" || true)"
+  if [[ -z "$docker_id" ]];then
     log "launch docker container: ${docker_repository}"
-    docker run -d -P ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
-    sleep 0.5
+    docker run --detach --publish-all --label "${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
   else
     log "found running docker image: $docker_image_id"
   fi
-  docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
+  # docker_ports="$(docker ps -f status=running -f ancestor=${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} --format "{{.Ports}}" || true)"
+  docker_ports="$(docker ps --latest --filter status=running --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.Ports}}" || true)"
 
   if [[ -n "$docker_ports" ]];then
     log "found public docker ports:${docker_ports}"
@@ -28,15 +38,16 @@ function docker_handle_request() {
     log "use public port:${public_port}"
 
     if [[ -n "$public_port" ]];then
-      docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
+      # docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
       log "execute request: localhost:${public_port}${docker_request_uri}"
       response="$( \
       echo -e "${request}\n" | socat - TCP:localhost:${public_port},shut-none \
       )"
       log "response from container: $(sed -n '1p' <<<"$response")"
       sed -n '1p' <<<"${response}"
-      echo "Docker_Image_Created: ${docker_image_created}"
-      echo "Docker_Image_Name: ${docker_image_id}"
+      # echo "Docker_Image_Created: ${docker_image_created}"
+      # echo "Docker_Image_Name: ${docker_image_id}"
+      echo "Custon_Header: injected"
       sed -n '2,$p' <<<"${response}"
       exit 0
     else
