@@ -32,6 +32,10 @@ function handle_internal_command() {
   elif [[ "$internal_path" == "env" ]];then
     env
 
+  elif [[ "$internal_path" == "clearlogs" ]];then
+    echo "clear logfile"
+    > ${LOG_FILE}
+
   elif [[ "$internal_path" == "logs" ]];then
     echo "logs"
     log_lines=${query_lines:-"50"}
