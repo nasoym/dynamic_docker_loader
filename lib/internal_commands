@@ -29,8 +29,9 @@ function handle_internal_command() {
 
   elif [[ "$internal_path" == "logs" ]];then
     echo "logs"
+    log_lines=${query_lines:-"50"}
     if [[ -r ${LOG_FILE} ]]; then
-      tail -n400 ${LOG_FILE}
+      tail -n${log_lines} ${LOG_FILE}
     fi
   fi
 }
