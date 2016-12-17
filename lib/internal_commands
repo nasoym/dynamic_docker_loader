@@ -8,7 +8,12 @@ function handle_internal_command() {
 
   elif [[ "$internal_path" == "remove" ]];then
     echo "remove all containers"
-    docker_remove_all_containers
+    docker_container_id="$(docker ps --all --filter label="dds" --format "{{.ID}}" || true)"
+    echo "found docker_container_ids:${docker_container_id}"
+    for container_id in $docker_container_id; do
+      echo "remove container: ${container_id}"
+      docker rm --force ${container_id}
+    done
 
   elif [[ "$internal_path" == "hello" ]];then
     echo "hello hello"
@@ -25,7 +30,8 @@ function handle_internal_command() {
 
   elif [[ "$internal_path" == "clearold" ]];then
     echo "remove old containers"
-    docker_remove_old_containers
+    # sudo lsof -n -iTCP@127.0.0.1:32836 -sTCP:ESTABLISHED
+    :
 
   elif [[ "$internal_path" == "logs" ]];then
     echo "logs"
