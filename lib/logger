@@ -2,9 +2,9 @@
 
 function log() {
   if [[ -n "$LOG_FILE" ]];then
-    echo "$(date +%FT%T.%3N) [$(date +%s%3N)] [$$] $@" >>${LOG_FILE}
+    echo "$(date +%FT%T.%3N) $(date +%s%3N) $$ $@" >>${LOG_FILE}
   else
-    echo "$(date +%FT%T.%3N) [$(date +%s%3N)] [[$$] $@" >&2
+    echo "$(date +%FT%T.%3N) $(date +%s%3N) $$ $@" >&2
   fi
 }
 
