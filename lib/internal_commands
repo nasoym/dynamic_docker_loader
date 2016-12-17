@@ -49,11 +49,11 @@ function handle_internal_command() {
     for c in $inactive_containers; do
       echo "inactive container: $c"
       public_ports="$(docker port "$c" | awk -F ':' '{print $NF}')"
-      for port in $public_ports; do
-        echo "inactive container: port: $port"
-        lsof -n -iTCP@127.0.0.1:${port} 
-        lsof -n -iTCP@127.0.0.1:${port} -sTCP:ESTABLISHED
-      done
+      connections="$(for port in $public_ports; do \
+        echo "inactive container: port: $port" \
+        lsof -n -iTCP@127.0.0.1:${port} -sTCP:ESTABLISHED \
+      done)"
+      echo ":: $connections"
     done
 
   elif [[ "$internal_path" == "docker_ps" ]];then
