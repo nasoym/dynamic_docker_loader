@@ -10,46 +10,43 @@ function docker_handle_request() {
   docker_id="$(docker ps --latest --filter status=running --filter label="dds" --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.ID}}" || true)"
   if [[ -z "$docker_id" ]];then
     log "docker: launch new container from repository: ${docker_repository}"
-    docker_id="$(docker run --detach --publish-all --label="dds" --label "${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true)"
+    docker run --detach --publish-all --label="dds" --label "${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} >&2 >/dev/null || true
+    docker_id="$(docker ps --latest --filter status=running --filter label="dds" --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.ID}}" || true)"
   fi
-  if [[ -n "$docker_id" ]];then
-    docker_ports="$(docker ps --latest --filter status=running --filter label="dds" --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.Ports}}" || true)"
-    if [[ -n "$docker_ports" ]];then
-      if [[ "$docker_port" == "-" ]];then
-        public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{print \$2;exit}" <<<"$docker_ports")"
-      else
-        public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{if (\$3==\"${docker_port}/tcp\"){print \$2}}" <<<"$docker_ports")"
-      fi
-
-      if [[ -n "$public_port" ]];then
-        docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
-
-        for i in {1..10}; do 
-          log "docker_request: [${docker_id}] localhost:${public_port}${docker_request_uri}"
-          response="$( \
-            echo -e "${request}\n" | socat -t 10 - TCP:localhost:${public_port},shut-none \
-          )"
-          if [[ -n "$response" ]];then
-            break
-          fi
-          log "docker: [${docker_id}] response was empty retry in 0.1 seconds"
-          sleep 0.2
-        done
-        log "docker_response: [${docker_id}] $(sed -n '1p' <<<"$response")"
-        sed -n '1p' <<<"${response}"
-        echo "Docker_Image_Created: ${docker_image_created}"
-        echo "Docker_Image_Name: ${docker_id}"
-        echo "Custon_Header: injected"
-        sed -n '2,$p' <<<"${response}"
-        exit 0
-      else
-        log "docker_error: [${docker_id}] could not find public port for ${docker_port}"
-      fi
+  docker_ports="$(docker ps --latest --filter status=running --filter label="dds" --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.Ports}}" || true)"
+  if [[ -n "$docker_ports" ]];then
+    if [[ "$docker_port" == "-" ]];then
+      public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{print \$2;exit}" <<<"$docker_ports")"
     else
-      log "docker_error: [${docker_id}] no public ports found"
+      public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{if (\$3==\"${docker_port}/tcp\"){print \$2}}" <<<"$docker_ports")"
+    fi
+
+    if [[ -n "$public_port" ]];then
+      docker_image_created="$(docker inspect ${DOCKER_NAMESPACE}/${docker_repository}:${docker_version} | jq -r '.[0].Created' || true)"
+
+      for i in {1..10}; do 
+        log "docker_request: [${docker_id}] localhost:${public_port}${docker_request_uri}"
+        response="$( \
+          echo -e "${request}\n" | socat -t 10 - TCP:localhost:${public_port},shut-none \
+        )"
+        if [[ -n "$response" ]];then
+          break
+        fi
+        log "docker: [${docker_id}] response was empty retry in 0.1 seconds"
+        sleep 0.2
+      done
+      log "docker_response: [${docker_id}] $(sed -n '1p' <<<"$response")"
+      sed -n '1p' <<<"${response}"
+      echo "Docker_Image_Created: ${docker_image_created}"
+      echo "Docker_Image_Name: ${docker_id}"
+      echo "Custon_Header: injected"
+      sed -n '2,$p' <<<"${response}"
+      exit 0
+    else
+      log "docker_error: [${docker_id}] could not find public port for ${docker_port}"
     fi
   else
-    log "docker_error: could not launch docker repository: ${docker_repository}"
+    log "docker_error: [${docker_id}] no public ports found"
   fi
 }
 
