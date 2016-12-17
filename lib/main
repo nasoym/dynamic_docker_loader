@@ -3,6 +3,8 @@
 function main() {
   parse_request
 
+  log "${SOCAT_PEERADDR}:${SOCAT_PEERPORT} ${request_method} ${request_uri}"
+
   read \
     internal_path \
     docker_port \
@@ -10,8 +12,6 @@ function main() {
     docker_repository \
     docker_request_uri \
     < <(extract_docker_information_from_path "$request_uri")
-
-  log "${SOCAT_PEERADDR}:${SOCAT_PEERPORT} ${request_method} ${request_uri}"
 
   authorization="$(get_header_value "authorization" <<<"$request_header_lines")"
   [[ "$no_auth" -ne 1 ]] && { authorization_verify "$authorization"; }
@@ -29,12 +29,14 @@ function main() {
     docker_return_code="$?"
 
     log "docker return code: $docker_return_code"
-    log "docker response: $( sed -n 1p <<<"$response")"
     if [[ -n "$response" ]];then
       echo "$response"
+      log "docker response: $( sed -n 1p <<<"$response")"
       exit 0
+    else
+      #TODO handle failure of container
+      echo_response_status_line 500 "Internal Server Error"
     fi
-    #TODO handle failure of container
   else
     echo_response_status_line 404 "Not Found"
   fi
