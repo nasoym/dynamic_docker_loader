@@ -27,7 +27,7 @@ function handle_internal_command() {
   elif [[ "$internal_path" == "logs" ]];then
     echo "logs"
     if [[ -r ${LOG_FILE} ]]; then
-      cat ${LOG_FILE}
+      tail -n400 ${LOG_FILE}
     fi
   fi
 }
