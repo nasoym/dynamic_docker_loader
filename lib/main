@@ -11,7 +11,6 @@ function main() {
     docker_request_uri \
     < <(extract_docker_information_from_path "$request_uri")
 
-  # export REQUEST_PATH="${request_uri/%\?*/}"
   if [[ "${request_uri}" =~ \? ]]; then
     request_queries="${request_uri#*\?}"
     for I in $(tr '&' '\n' <<<"$request_queries"); do
