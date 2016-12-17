@@ -21,3 +21,19 @@ function get_header_value() {
       -e "s/^${header_key}: \(.*\)\$/\1/gi"
 }
 
+function urldecode() {
+  INPUT="$@"
+  url_encoded="${INPUT//+/ }"
+  printf '%b\n' "${url_encoded//%/\\x}"
+}
+
+function urlencode() {
+  echo -n "$@" | while IFS= read -n 1 C; do 
+    case $C in
+        [a-zA-Z0-9.~_-]) printf "$C" ;;
+        *) printf '%%%02X' "'$C" ;; 
+    esac
+  done
+  printf '\n'
+}
+
