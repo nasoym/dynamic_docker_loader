@@ -15,10 +15,6 @@ function handle_internal_command() {
       docker rm --force ${container_id}
     done
 
-  elif [[ "$internal_path" == "clearold" ]];then
-    echo "remove old containers"
-    # sudo lsof -n -iTCP@127.0.0.1:32836 -sTCP:ESTABLISHED
-
   elif [[ "$internal_path" == "active_containers" ]];then
     echo "active containers"
     active_minutes=${query_minutes:-"30"}
@@ -35,8 +31,8 @@ function handle_internal_command() {
       --new-line-format= \
       <(sort <<<"$all_containers") <(sort <<<"$active_containers")
 
-  elif [[ "$internal_path" == "inactive_connections" ]];then
-    echo "inactive containers"
+  elif [[ "$internal_path" == "clear_inactive" ]];then
+    echo "clear inactive containers"
     active_minutes=${query_minutes:-"30"}
     active_containers="$(awk -v active=${active_minutes} '{t=(systime()-60*active)*1000; if ($2>t && $4=="docker_request:") {a[$5]=$5}} END {for (i in a){print i}}' ${LOG_FILE})"
     all_containers="$(docker ps --all --filter label="dds" --format "{{.ID}}" || true)"
