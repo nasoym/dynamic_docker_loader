@@ -17,7 +17,7 @@ function main() {
   [[ "$no_auth" -ne 1 ]] && { authorization_verify "$authorization"; }
 
   if [[ "$internal_path" != "-" ]];then
-    log "internal_path:${internal_path}"
+    log "internal_path: ${internal_path}"
     echo_response_status_line 200 "Ok"
     echo
     handle_internal_command $internal_path
