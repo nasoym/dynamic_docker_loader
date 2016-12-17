@@ -23,7 +23,7 @@ function handle_internal_command() {
     docker ps --all
 
   elif [[ "$internal_path" == "info" ]];then
-    top -n1
+    echo "info"
 
   elif [[ "$internal_path" == "pull" ]];then
     echo "run git pull"
