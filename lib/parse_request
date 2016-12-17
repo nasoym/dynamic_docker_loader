@@ -15,5 +15,15 @@ function parse_request() {
   if [[ -n "$content_length" ]] && [[ "$content_length" -gt "0" ]];then
     read -r -d '' -n "$content_length" request_content
   fi
+
+  if [[ "${request_uri}" =~ \? ]]; then
+    request_queries="${request_uri#*\?}"
+    for I in $(tr '&' '\n' <<<"$request_queries"); do
+      query_key=${I//\=*/}
+      [[ "${I}" =~ = ]] && query_value="$(urldecode ${I//*\=/})"
+      declare -x "query_${query_key}"="$query_value"
+    done
+  fi
+
 }
 
