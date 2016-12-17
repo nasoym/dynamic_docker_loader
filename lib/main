@@ -3,7 +3,7 @@
 function main() {
   parse_request
 
-  log "${SOCAT_PEERADDR}:${SOCAT_PEERPORT} ${request_method} ${request_uri}"
+  log "request: ${SOCAT_PEERADDR}:${SOCAT_PEERPORT} ${request_method} ${request_uri}"
 
   read \
     internal_path \
