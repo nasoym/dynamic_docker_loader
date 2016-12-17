@@ -21,8 +21,15 @@ function handle_internal_command() {
 
   elif [[ "$internal_path" == "active_containers" ]];then
     echo "active containers"
-    active_minutes=${query_active:-"30"}
+    active_minutes=${query_minutes:-"30"}
     awk -v active=${active_minutes} '{t=(systime()-60*active)*1000; if ($2>t && $4=="docker_request:") {a[$5]=$5}} END {for (i in a){print i}}' ${LOG_FILE}
+
+  elif [[ "$internal_path" == "inactive_containers" ]];then
+    echo "inactive containers"
+    active_minutes=${query_minutes:-"30"}
+    active_containers="$(awk -v active=${active_minutes} '{t=(systime()-60*active)*1000; if ($2>t && $4=="docker_request:") {a[$5]=$5}} END {for (i in a){print i}}' ${LOG_FILE})"
+    all_containers="$(docker ps --all --filter label="dds" --format "{{.ID}}" || true)"
+    diff -y <(echo "$all_containers") <(echo "$active_containers")
 
   elif [[ "$internal_path" == "docker_ps" ]];then
     docker ps --all
