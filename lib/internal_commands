@@ -47,11 +47,12 @@ function handle_internal_command() {
       <(sort <<<"$all_containers") <(sort <<<"$active_containers")
     )"
     for c in $inactive_containers; do
-      echo "inactive container: $c"
       public_ports="$(docker port "$c" | awk -F ':' '{print $NF}')"
-        # echo "inactive container: port: $port" \
       connections="$(for port in $public_ports; do lsof -n -iTCP@127.0.0.1:${port} -sTCP:ESTABLISHED; done)"
-      echo ":: $connections"
+      if [[ -z "$connections" ]]; then
+        echo "remove inactive container: $c"
+        docker rm --force ${c}
+      fi
     done
 
   elif [[ "$internal_path" == "docker_ps" ]];then
