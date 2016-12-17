@@ -19,6 +19,10 @@ function handle_internal_command() {
     echo "remove old containers"
     # sudo lsof -n -iTCP@127.0.0.1:32836 -sTCP:ESTABLISHED
 
+  elif [[ "$internal_path" == "active_containers" ]];then
+    echo "active containers"
+    awk '{t=(systime()-60*15)*1000; if ($2>t && $4=="docker_request:") {a[$5]=$5}} END {for (i in a){print i}}' ${LOG_FILE}
+
   elif [[ "$internal_path" == "docker_ps" ]];then
     docker ps --all
 
