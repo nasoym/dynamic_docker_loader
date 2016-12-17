@@ -17,6 +17,7 @@ assert "main /repo/rest" "- - latest repo /rest"
 assert "main /repo/" "- - latest repo /"
 assert "main /logs" "logs - latest  "
 assert "main /8080/0.0.1/repo" "- - latest - /repo"
+assert "main /logs?ab=ab" "logs - latest  "
 
 assert_end tests
 
