@@ -27,7 +27,6 @@ function main() {
     echo -e "${request_method} ${docker_request_uri} ${request_http_version}\n${request_header_lines}${request_content}" \
       | docker_handle_request "$docker_repository" "$docker_version" "$docker_port" )"
     docker_return_code="$?"
-
     log "docker return code: $docker_return_code"
     if [[ -n "$response" ]];then
       echo "$response"

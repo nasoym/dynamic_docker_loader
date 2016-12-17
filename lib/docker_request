@@ -43,12 +43,13 @@ function docker_handle_request() {
         sed -n '2,$p' <<<"${response}"
         exit 0
       else
-        log "docker_error: [${docker_id}] no public ports found"
+        log "docker_error: [${docker_id}] could not find public port for ${docker_port}"
       fi
     else
-      log "docker_error: could not launch docker repository: ${docker_repository}"
+      log "docker_error: [${docker_id}] no public ports found"
     fi
   else
+    log "docker_error: could not launch docker repository: ${docker_repository}"
   fi
 }
 
