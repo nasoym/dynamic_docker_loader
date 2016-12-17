@@ -3,7 +3,7 @@
 function handle_internal_command() {
   local internal_path="$1"
   if [[ "$internal_path" == "update" ]];then
-    echo "update"
+    echo "update docker images and containers"
     docker_update_all_containers
 
   elif [[ "$internal_path" == "remove" ]];then
@@ -15,8 +15,15 @@ function handle_internal_command() {
       docker rm --force ${container_id}
     done
 
-  elif [[ "$internal_path" == "hello" ]];then
-    echo "hello hello"
+  elif [[ "$internal_path" == "clearold" ]];then
+    echo "remove old containers"
+    # sudo lsof -n -iTCP@127.0.0.1:32836 -sTCP:ESTABLISHED
+
+  elif [[ "$internal_path" == "docker_ps" ]];then
+    docker ps --all
+
+  elif [[ "$internal_path" == "info" ]];then
+    top -n1
 
   elif [[ "$internal_path" == "pull" ]];then
     echo "run git pull"
@@ -24,14 +31,6 @@ function handle_internal_command() {
 
   elif [[ "$internal_path" == "env" ]];then
     env
-
-  elif [[ "$internal_path" == "docker_ps" ]];then
-    docker ps --all
-
-  elif [[ "$internal_path" == "clearold" ]];then
-    echo "remove old containers"
-    # sudo lsof -n -iTCP@127.0.0.1:32836 -sTCP:ESTABLISHED
-    :
 
   elif [[ "$internal_path" == "logs" ]];then
     echo "logs"
