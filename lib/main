@@ -17,7 +17,7 @@ function main() {
   [[ "$no_auth" -ne 1 ]] && { authorization_verify "$authorization"; }
 
   if [[ "$internal_path" != "-" ]];then
-    log "handle internal_path:${internal_path}"
+    log "internal_path:${internal_path}"
     echo_response_status_line 200 "Ok"
     echo
     handle_internal_command $internal_path
@@ -27,13 +27,12 @@ function main() {
     echo -e "${request_method} ${docker_request_uri} ${request_http_version}\n${request_header_lines}${request_content}" \
       | docker_handle_request "$docker_repository" "$docker_version" "$docker_port" )"
     docker_return_code="$?"
-    log "docker return code: $docker_return_code"
     if [[ -n "$response" ]];then
       echo "$response"
-      log "docker response: $( sed -n 1p <<<"$response")"
       exit 0
     else
       #TODO handle failure of container
+      log "docker_error: return code: $docker_return_code"
       echo_response_status_line 500 "Internal Server Error"
     fi
   else
