@@ -21,7 +21,7 @@ function parse_request() {
     for I in $(tr '&' '\n' <<<"$request_queries"); do
       query_key=${I//\=*/}
       [[ "${I}" =~ = ]] && query_value="$(urldecode ${I//*\=/})"
-      declare -x "query_${query_key}"="$query_value"
+      declare -gx "query_${query_key}"="$query_value"
     done
   fi
 
