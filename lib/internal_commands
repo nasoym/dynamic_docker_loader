@@ -10,6 +10,9 @@ function handle_internal_command() {
     echo "remove all containers"
     docker_remove_all_containers
 
+  elif [[ "$internal_path" == "hello" ]];then
+    echo "hello hello"
+
   elif [[ "$internal_path" == "pull" ]];then
     echo "run git pull"
     git pull
