@@ -37,8 +37,8 @@ function main() {
       | docker_handle_request "$docker_repository" "$docker_version" "$docker_port" )"
     docker_return_code="$?"
 
-    log "docker response: $( sed -n 1p <<<"$response")"
     log "docker return code: $docker_return_code"
+    log "docker response: $( sed -n 1p <<<"$response")"
     if [[ -n "$response" ]];then
       echo "$response"
       exit 0
