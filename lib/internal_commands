@@ -17,6 +17,9 @@ function handle_internal_command() {
     echo "run git pull"
     git pull
 
+  elif [[ "$internal_path" == "env" ]];then
+    env
+
   elif [[ "$internal_path" == "clearold" ]];then
     echo "remove old containers"
     docker_remove_old_containers
