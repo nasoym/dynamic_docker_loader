@@ -18,9 +18,9 @@ function handle_internal_command() {
   elif [[ "$internal_path" == "list_updated_repos" ]];then
     echo "list updated docker repositories"
     max_time_diff=${query_time:-"120"}
-    dockerhub_list="$(curl --silent "https://hub.docker.com/v2/repositories/nasoym/?page=1&page_size=10000")"
 
-    remote_dockers="$(echo "$dockerhub_list" \
+    remote_dockers="$(curl --silent \
+        "https://hub.docker.com/v2/repositories/nasoym/?page=1&page_size=10000" \
       | jq -c '.results|map({name,last_updated})[]' \
       | jq -c '.last_updated=(.last_updated|gsub("\\.[0-9]*Z$";"")|strptime("%Y-%m-%dT%H:%M:%S")|mktime)'
     )"
@@ -38,16 +38,13 @@ function handle_internal_command() {
       | jq -c -R '.|split(" ")|{name:.[0]|gsub("^nasoym\/";""),last_updated:.[1]|tonumber,type:"local"}'
     )"
 
-
     echo -en "${remote_dockers}\n${local_dockers}" \
       | jq -s 'group_by(.name)' \
-      | jq 'map({name:.[0].name,local:(.[]|select(.type=="local").last_updated),remote:(.[]|select(has("type")|not).last_updated)})' \
-      | jq 'map(.diff=(.remote-.local))' \
-      | jq "map(select(.diff > ${max_time_diff}))" \
-      | jq -r 'map(.name)[]'
-
-
-
+      | jq -c 'map({name:.[0].name,local:(.[]|select(.type=="local").last_updated),remote:(.[]|select(has("type")|not).last_updated)})' \
+      | jq -c 'map(.diff=(.remote-.local))' \
+      | jq -c "map(select(.diff > ${max_time_diff}))" \
+      | jq -r '[]'
+    #   | jq -r 'map(.name)[]'
 
   elif [[ "$internal_path" == "active_containers" ]];then
     echo "active containers"
