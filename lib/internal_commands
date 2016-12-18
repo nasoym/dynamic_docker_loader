@@ -43,7 +43,7 @@ function handle_internal_command() {
       | jq -c 'map({name:.[0].name,local:(.[]|select(.type=="local").last_updated),remote:(.[]|select(has("type")|not).last_updated)})' \
       | jq -c 'map(.diff=(.remote-.local))' \
       | jq -c "map(select(.diff > ${max_time_diff}))" \
-      | jq -r '.[]'
+      | jq -c '.[]'
     #   | jq -r 'map(.name)[]'
 
   elif [[ "$internal_path" == "active_containers" ]];then
