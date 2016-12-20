@@ -4,6 +4,7 @@ set -ef -o pipefail
 function kill_command(){
   if [[ -n "$COMMAND_PID" ]]; then
     kill -0 $COMMAND_PID &>/dev/null && { 
+      echo "kill $COMMAND_PID"
       kill $COMMAND_PID;
       unset COMMAND_PID
     }
