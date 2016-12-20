@@ -17,6 +17,7 @@ assert 'echo -e "get /bla http/1.1\n\n" | parse request_method request_uri' "get
 assert 'echo -e "get /bla http/1.1\nHeader1: Value1\n\n" | parse request_method request_uri' "get\n/bla"
 assert 'echo -e "get /bla?a=b http/1.1\n\n" | parse query_a' "b"
 assert 'echo -e "get /bla?a http/1.1\n\n" | parse query_a' ""
+assert 'echo -e "get /bla?a http/1.1\n\n" | parse request_path' "/bla"
 assert 'echo -e "get /bla http/1.1\nHeader1: Value1\n\n" | parse request_header_lines' "Header1: Value1"
 assert 'echo -e "get /bla http/1.1\nHeader1: Value1\nContent-Length: 0\n\n" | parse content_length' "0"
 assert 'echo -e "get /bla http/1.1\nHeader1: Value1\nContent-Length: 0\n\n123\n" | parse content_length request_content' "0"

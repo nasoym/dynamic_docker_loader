@@ -17,6 +17,7 @@ function parse_request() {
   fi
   : ${request_content:=""}
 
+  request_path="${request_uri/%\?*/}"
   if [[ "${request_uri}" =~ \? ]]; then
     request_queries="${request_uri#*\?}"
     for I in $(tr '&' '\n' <<<"$request_queries"); do
