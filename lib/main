@@ -31,7 +31,6 @@ function main() {
       echo "$response"
       exit 0
     else
-      #TODO handle failure of container
       log "docker_error: return code: $docker_return_code"
       echo_response_status_line 500 "Internal Server Error"
     fi
