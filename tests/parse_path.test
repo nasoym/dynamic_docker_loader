@@ -6,18 +6,29 @@ source lib/parse_path
 source tests/lib/assert.sh/assert.sh
 
 function main() {
-  extract_docker_information_from_path $@
+  # extract_docker_information_from_path $@
+
+  read -r \
+    docker_repository \
+    docker_version \
+    docker_request_uri \
+    docker_port \
+    < <(extract_docker_information_from_path "$@")
+
+  echo "${docker_repository} ${docker_version} ${docker_request_uri} ${docker_port}"
 }
 
-assert "main" "- - latest  "
-assert "main /8080/0.0.1/repo/rest" "- 8080 0.0.1 repo /rest"
-assert "main /8080/repo/rest" "- 8080 latest repo /rest"
-assert "main /0.0.1/repo/rest" "- - 0.0.1 repo /rest"
-assert "main /repo/rest" "- - latest repo /rest"
-assert "main /repo/" "- - latest repo /"
-assert "main /logs" "logs - latest  "
-assert "main /8080/0.0.1/repo" "- - latest - /repo"
-assert "main /logs?ab=ab" "logs - latest  "
+assert "main" "- latest  "
+assert "main /8080/0.0.1/repo/rest" "repo 0.0.1 /rest 8080"
+assert "main /8080/repo/rest" "repo latest /rest 8080"
+assert "main /0.0.1/repo/rest" "repo 0.0.1 /rest "
+assert "main /repo/rest" "repo latest /rest "
+assert "main /repo/" "repo latest / "
+assert "main /logs" "- latest  "
+assert "main /8080/0.0.1/repo" "- latest /repo "
+assert "main /logs?ab=ab" "- latest  "
+assert "main /-/rest/a/b" "- latest /rest/a/b "
+assert "main /-/logs" "- latest /logs "
 
 assert_end tests
 

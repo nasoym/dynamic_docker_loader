@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 function extract_docker_information_from_path() {
-  local docker_port docker_version docker_repository docker_request_uri internal_path
+  local docker_port docker_version docker_repository docker_request_uri 
   docker_repository=""
-  request_path="${1/%\?*/}"
+  request_path="$1"
   if [[ "${request_path}" =~ ^/([0-9]+)/([0-9]+\.[0-9]+\.[0-9]+)/([^/]+)(/.*)$ ]];then
     docker_port="${BASH_REMATCH[1]}"
     docker_version="${BASH_REMATCH[2]}"
@@ -14,7 +14,7 @@ function extract_docker_information_from_path() {
     docker_repository="${BASH_REMATCH[2]}"
     docker_request_uri="${BASH_REMATCH[3]}"
     if [[ "$docker_repository" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]];then
-      docker_port="-"
+      docker_port=""
       docker_repository="-"
     fi
   elif [[ "${request_path}" =~ ^/([0-9]+\.[0-9]+\.[0-9]+)/([^/]+)(/.*)$ ]];then
@@ -24,15 +24,9 @@ function extract_docker_information_from_path() {
   elif [[ "${request_path}" =~ ^/([^/]+)(/.*)$ ]];then
     docker_repository="${BASH_REMATCH[1]}"
     docker_request_uri="${BASH_REMATCH[2]}"
-  elif [[ "${request_path}" =~ ^/([^/]+)$ ]];then
-    # docker_repository=""
-    internal_path="${BASH_REMATCH[1]}"
-  else
-    docker_repository=""
   fi
-  : ${internal_path:="-"}
-  : ${docker_port:="-"}
+  : ${docker_repository:="-"}
   : ${docker_version:="latest"}
-  echo "$internal_path" "$docker_port" "$docker_version" "$docker_repository" "$docker_request_uri"
+  echo "$docker_repository" "$docker_version" "$docker_request_uri" "$docker_port"
 }
 
