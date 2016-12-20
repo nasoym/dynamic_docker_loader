@@ -13,7 +13,7 @@ function main() {
     docker_version \
     docker_request_uri \
     docker_port \
-    < <(extract_docker_information_from_path "$request_path")
+    < <(extract_docker_information_from_path "$request_uri")
 
   if [[ "$docker_repository" == "-" ]] && [[ -n "$docker_request_uri" ]];then
     echo -e "${request_method} ${docker_request_uri} ${request_http_version}\n${request_header_lines}${request_content}" \
