@@ -15,6 +15,7 @@ function parse_request() {
   if [[ -n "$content_length" ]] && [[ "$content_length" -gt "0" ]];then
     read -r -d '' -n "$content_length" request_content
   fi
+  : ${request_content:=""}
 
   if [[ "${request_uri}" =~ \? ]]; then
     request_queries="${request_uri#*\?}"
@@ -24,6 +25,5 @@ function parse_request() {
       declare -gx "query_${query_key}"="$query_value"
     done
   fi
-
 }
 
