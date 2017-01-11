@@ -15,7 +15,7 @@ function docker_handle_request() {
   fi
   docker_ports="$(docker ps --latest --filter status=running --filter label="dds" --filter label="${DOCKER_NAMESPACE}/${docker_repository}:${docker_version}" --format "{{.Ports}}" || true)"
   if [[ -n "$docker_ports" ]];then
-    if [[ "$docker_port" == "-" ]];then
+    if [[ -z "$docker_port" ]];then
       public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{print \$2;exit}" <<<"$docker_ports")"
     else
       public_port="$(awk "BEGIN{RS=\",|\n\";FS=\"->|:\"}{if (\$3==\"${docker_port}/tcp\"){print \$2}}" <<<"$docker_ports")"
