@@ -9,6 +9,13 @@ function kill_command(){
       unset COMMAND_PID
     }
   fi
+  if [[ -n "$UPDATE_PID" ]]; then
+    kill -0 $UPDATE_PID &>/dev/null && { 
+      echo "kill $UPDATE_PID"
+      kill $UPDATE_PID;
+      unset UPDATE_PID
+    }
+  fi
 }
 
 function quit(){
@@ -44,6 +51,9 @@ socat \
   TCP-LISTEN:${INTERNAL_PORT},reuseaddr,fork \
   EXEC:"${INTERNAL_SERVICE}" &
 COMMAND_PID="$!"
+
+while true; do sleep 60; curl -s "http://localhost:8081/clear_inactive?minutes=1" >/dev/null ; done &
+UPDATE_PID="$!"
 
 socat \
   $VERBOSE_OPTIONS \
