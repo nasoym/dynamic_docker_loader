@@ -52,7 +52,7 @@ socat \
   EXEC:"${INTERNAL_SERVICE}" &
 COMMAND_PID="$!"
 
-while true; do sleep 60; curl -s "http://localhost:8081/clear_inactive?minutes=1" >/dev/null ; done &
+while true; do sleep 60; curl -s "http://localhost:8081/update"; curl -s "http://localhost:8081/clear_inactive?minutes=1" >/dev/null ; done &
 UPDATE_PID="$!"
 
 socat \
