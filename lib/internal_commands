@@ -62,6 +62,7 @@ function handle_internal_command() {
       <(sort <<<"$all_containers") <(sort <<<"$active_containers")
 
   elif [[ "$internal_path" == "clear_inactive" ]];then
+    log "clear inactive containers"
     echo "clear inactive containers"
     active_minutes=${query_minutes:-"30"}
     active_containers="$(awk -v active=${active_minutes} '{t=(systime()-60*active)*1000; if ($2>t && $4=="docker_request:") {a[$5]=$5}} END {for (i in a){print i}}' ${LOG_FILE})"
@@ -77,6 +78,7 @@ function handle_internal_command() {
       connections="$(for port in $public_ports; do lsof -n -iTCP@127.0.0.1:${port} -sTCP:ESTABLISHED; done)"
       if [[ -z "$connections" ]]; then
         echo "remove inactive container: $c"
+        log "docker: remove inactive container: $c"
         docker rm --force ${c}
       fi
     done
