@@ -13,6 +13,13 @@ function parse() {
   done
 }
 
+function parse_and_get_header() {
+  parse_request
+  header="$1"
+  echo "$request_header_lines" \
+    | get_header_value $header
+}
+
 assert 'echo -e "get /bla http/1.1\n\n" | parse request_method request_uri' "get\n/bla"
 assert 'echo -e "get /bla http/1.1\nHeader1: Value1\n\n" | parse request_method request_uri' "get\n/bla"
 assert 'echo -e "get /bla?a=b http/1.1\n\n" | parse query_a' "b"
@@ -23,8 +30,10 @@ assert 'echo -e "get /bla http/1.1\nHeader1: Value1\nContent-Length: 0\n\n" | pa
 assert 'echo -e "get /bla http/1.1\nHeader1: Value1\nContent-Length: 0\n\n123\n" | parse content_length request_content' "0"
 assert 'echo -e "get /bla http/1.1\nContent-Length: 3\n\n123\n" | parse content_length' "3"
 assert 'echo -e "get /bla http/1.1\nContent-Length: 3\n\n123\n" | parse request_content' "123"
+assert 'echo -e "get /bla http/1.1\nHeader1: Value1\nHeader2: Value2\n\n" | parse_and_get_header header1' "Value1"
+assert 'echo -e "get /bla http/1.1\nHeader1: Value1\nHeader2: Value2\n\n" | parse_and_get_header header2' "Value2"
+assert 'echo -e "get /bla http/1.1\nHeader1: \nHeader2: Value2\n\n" | parse_and_get_header header2' "Value2"
 
 assert_end tests
-
 
 
