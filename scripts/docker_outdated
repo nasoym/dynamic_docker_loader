@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+  remote_dockers="$(curl --silent "https://hub.docker.com/v2/repositories/nasoym/?page=1&page_size=10000" \
+    | jq -c '.results|map({name,last_updated})[]' \
+    | jq -c '.last_updated=(.last_updated|gsub("\\.[0-9]*Z$";"")|strptime("%Y-%m-%dT%H:%M:%S")|mktime)' \
+  )"
+
+  local_dockers="$(docker images --format "{{.Repository}}:{{.Tag}} {{.CreatedAt}}" nasoym/* \
+    | jq -R '.|{name:split(" ")[0],last_updated:(split(" ")[1:-1]|join(" "))}' \
+    | jq -s '.|sort_by(.last_updated)|group_by(.name)[]|{name:.[0].name,last_updated:(.|sort_by(.last_updated)|reverse|.[0].last_updated)}' \
+    | jq -s -c 'map(select(.name|contains("<none>")|not))[]' \
+    | jq -s -c 'map(select(.name|contains("latest")))[]' \
+    | jq -c '.last_updated=(.last_updated|gsub("\\.[0-9]*Z$";"")|strptime("%Y-%m-%d %H:%M:%S %z")|mktime)' \
+    | jq -c '.name=(.name|gsub("^nasoym\/";""))' \
+    | jq -c '.name=(.name|gsub(":latest$";""))' \
+    | jq -c '.type="local"' \
+    )"
+
+  : ${max_time_diff:="0"}
+
+  echo -en "${remote_dockers}\n${local_dockers}" \
+    | jq -s 'group_by(.name)' \
+    | jq 'map({name:.[0].name,local:(.[]|select(.type=="local").last_updated),remote:(.[]|select(has("type")|not).last_updated)})' \
+    | jq 'map(.diff=(.remote-.local))' \
+    | jq "map(select(.diff > ${max_time_diff}))" \
+    | jq -r 'map(.name)[]'
+
